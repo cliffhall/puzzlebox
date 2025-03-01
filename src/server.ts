@@ -5,7 +5,7 @@ import {
 import {
   noArgSchema,
   addPuzzleSchema,
-} from "../common/schemas.ts";
+} from "./common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { addPuzzle, countPuzzles } from "./tools/puzzles.ts";

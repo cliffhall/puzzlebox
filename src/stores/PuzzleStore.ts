@@ -1,5 +1,5 @@
-import { Puzzle } from "../../common/puzzle.ts";
-import { createId } from "../../common/utils.ts";
+import { Puzzle } from "../common/puzzle.ts";
+import { createId } from "../common/utils.ts";
 
 class PuzzleStore {
   // Singleton Puzzle Store
@@ -13,6 +13,13 @@ class PuzzleStore {
     const puzzle: Puzzle = new Puzzle(puzzleId, puzzleConfig);
     this.puzzles.set(puzzle.id, puzzle);
     return puzzle;
+  }
+
+  /**
+   * Clear all puzzles
+   */
+  static clearPuzzles() {
+    PuzzleStore.puzzles = new Map<string, Puzzle>();
   }
 
   /**

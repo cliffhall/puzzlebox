@@ -1,11 +1,11 @@
 const { build } = require("esbuild");
 
 build({
-  entryPoints: ["src/server/index.ts"],
+  entryPoints: ["src/index.ts"],
   bundle: true,
   platform: "node",
   target: "node16",
-  outfile: "dist/server/index.cjs",
+  outfile: "dist/index.cjs",
   external: [
     "express",
     "fs",

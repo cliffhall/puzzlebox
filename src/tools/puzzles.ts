@@ -1,5 +1,5 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
-import { puzzleSchema } from "../../common/schemas.js";
+import { puzzleSchema } from "../common/schemas.ts";
 
 interface RegisterPuzzleResponse {
   puzzleId: string | undefined;

@@ -37,7 +37,6 @@ export class Puzzle {
    */
   public addState(state: State, isInitial: boolean = false): void {
     this.states.set(state.name, state);
-    console.log(this.states.get(state.name));
     if (isInitial) this.initialState = state.name;
   }
 
