@@ -4,14 +4,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   noArgSchema,
-  PuzzleSchema
+  addPuzzleSchema,
 } from "../common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-  addPuzzle
-} from "./tools/puzzles.ts";
-
+import { addPuzzle } from "./tools/puzzles.ts";
 
 export const createServer = () => {
   const mcpServer = new Server(
@@ -36,8 +33,8 @@ export const createServer = () => {
         {
           name: "add_puzzle",
           description: "Register a new puzzle",
-          inputSchema: zodToJsonSchema(PuzzleSchema),
-        }
+          inputSchema: zodToJsonSchema(addPuzzleSchema),
+        },
       ],
     };
   });
@@ -47,8 +44,9 @@ export const createServer = () => {
     try {
       switch (request.params.name) {
         case "add_puzzle": {
-          const args = PuzzleSchema.parse(request.params.arguments);
-          const result = addPuzzle(args);
+          const args = addPuzzleSchema.parse(request.params.arguments);
+          const result = addPuzzle(args.config);
+          console.log(JSON.stringify(result), result);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
@@ -64,7 +62,6 @@ export const createServer = () => {
       );
     }
   });
-
 
   return { mcpServer };
 };

@@ -9664,20 +9664,23 @@ var import_express = __toESM(require("express"), 1);
 
 // src/common/schemas.ts
 var noArgSchema = z.object({});
-var ActionSchema = z.object({
-  actionName: z.string(),
+var actionSchema = z.object({
+  name: z.string(),
   targetState: z.string()
 });
-var StateSchema = z.object({
+var stateSchema = z.object({
   name: z.string(),
-  actions: z.map(z.string(), ActionSchema).optional(),
+  actions: z.record(z.string(), actionSchema).optional(),
   enterGuard: z.string().optional(),
   exitGuard: z.string().optional()
 });
-var PuzzleSchema = z.object({
+var puzzleSchema = z.object({
   id: z.string().optional(),
   initialState: z.string(),
-  states: z.map(z.string(), StateSchema)
+  states: z.record(z.string(), stateSchema)
+});
+var addPuzzleSchema = z.object({
+  config: z.string()
 });
 
 // node_modules/zod-to-json-schema/dist/esm/Options.js
@@ -11397,6 +11400,7 @@ var Puzzle = class {
    */
   addState(state, isInitial = false) {
     this.states.set(state.name, state);
+    console.log(this.states.get(state.name));
     if (isInitial) this.initialState = state.name;
   }
   /**
@@ -11409,8 +11413,8 @@ var Puzzle = class {
     const state = this.states.get(stateName);
     if (state) {
       if (!(state == null ? void 0 : state.actions)) state.actions = /* @__PURE__ */ new Map();
-      state.actions.set(action.actionName, action);
-      return success = true;
+      state.actions.set(action.name, action);
+      success = true;
     }
     return success;
   }
@@ -11420,14 +11424,16 @@ var Puzzle = class {
    * @returns StateName
    */
   initializePuzzle(puzzleConfig) {
-    const parsedPuzzle = PuzzleSchema.safeParse(puzzleConfig);
+    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
     if (parsedPuzzle.success) {
       const config = parsedPuzzle.data;
-      for (let [name, state] of config.states) {
-        ;
+      for (const [name, value] of Object.entries(config.states)) {
+        const state = value;
         this.addState(state, name === config.initialState);
       }
       return config.initialState;
+    } else {
+      console.log("error");
     }
   }
 };
@@ -11462,9 +11468,14 @@ var PuzzleStore_default = PuzzleStore;
 
 // src/server/tools/puzzles.ts
 function addPuzzle(puzzleConfig) {
-  return {
-    puzzle: PuzzleStore_default.addPuzzle(puzzleConfig)
-  };
+  let response = { puzzleId: void 0 };
+  const config = puzzleSchema.safeParse(JSON.parse(puzzleConfig));
+  if (config.success) {
+    response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
+  } else {
+    console.log(config.error);
+  }
+  return response;
 }
 
 // src/server/server.ts
@@ -11489,7 +11500,7 @@ var createServer = () => {
         {
           name: "add_puzzle",
           description: "Register a new puzzle",
-          inputSchema: zodToJsonSchema(PuzzleSchema)
+          inputSchema: zodToJsonSchema(addPuzzleSchema)
         }
       ]
     };
@@ -11498,8 +11509,9 @@ var createServer = () => {
     try {
       switch (request.params.name) {
         case "add_puzzle": {
-          const args = PuzzleSchema.parse(request.params.arguments);
-          const result = addPuzzle(args);
+          const args = addPuzzleSchema.parse(request.params.arguments);
+          const result = addPuzzle(args.config);
+          console.log(JSON.stringify(result), result);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
           };

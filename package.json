@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "scripts": {
     "build": "node esbuild.config.cjs",
+    "start": "node dist/server/index.cjs",
     "inspector": "npx @modelcontextprotocol/inspector",
     "format": "prettier --write ./src",
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",

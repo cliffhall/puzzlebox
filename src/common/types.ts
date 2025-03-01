@@ -6,11 +6,11 @@ export type GuardPrompt = string;
 export interface State {
   name: string;
   enterGuard?: GuardPrompt;
-  extiGuard?: GuardPrompt;
-  actions?: Map<ActionName, Action>
+  exitGuard?: GuardPrompt;
+  actions?: Map<ActionName, Action>;
 }
 
 export interface Action {
-  actionName: ActionName;
+  name: ActionName;
   targetState: StateName;
 }

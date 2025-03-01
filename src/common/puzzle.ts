@@ -1,12 +1,6 @@
-import {
-  State,
-  Action,
-  StateName
-} from "../common/types.ts";
+import { State, Action, StateName } from "./types.ts";
 
-import {
-  PuzzleSchema
-} from "../common/schemas.ts";
+import { puzzleSchema } from "./schemas.ts";
 
 export class Puzzle {
   id: string;
@@ -31,7 +25,9 @@ export class Puzzle {
    * Get the current state
    */
   public getCurrentState(): State | undefined {
-    return (this.currentState === undefined) ? undefined : this.states.get(this.currentState);
+    return this.currentState === undefined
+      ? undefined
+      : this.states.get(this.currentState);
   }
 
   /**
@@ -41,6 +37,7 @@ export class Puzzle {
    */
   public addState(state: State, isInitial: boolean = false): void {
     this.states.set(state.name, state);
+    console.log(this.states.get(state.name));
     if (isInitial) this.initialState = state.name;
   }
 
@@ -54,8 +51,8 @@ export class Puzzle {
     const state = this.states.get(stateName);
     if (state) {
       if (!state?.actions) state.actions = new Map();
-      state.actions.set(action.actionName, action);
-      return success = true
+      state.actions.set(action.name, action);
+      success = true;
     }
     return success;
   }
@@ -66,13 +63,16 @@ export class Puzzle {
    * @returns StateName
    */
   public initializePuzzle(puzzleConfig: object): StateName | undefined {
-    const parsedPuzzle =  PuzzleSchema.safeParse(puzzleConfig);
+    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
     if (parsedPuzzle.success) {
       const config = parsedPuzzle.data;
-      for (let [name, state] of config.states) {;
+      for (const [name, value] of Object.entries(config.states)) {
+        const state = value as State;
         this.addState(state, name === config.initialState);
       }
       return config.initialState;
+    } else {
+      console.log("error");
     }
   }
 }
