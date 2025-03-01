@@ -8,7 +8,7 @@ import {
 } from "../common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { addPuzzle } from "./tools/puzzles.ts";
+import { addPuzzle, countPuzzles } from "./tools/puzzles.ts";
 
 export const createServer = () => {
   const mcpServer = new Server(
@@ -35,6 +35,11 @@ export const createServer = () => {
           description: "Register a new puzzle",
           inputSchema: zodToJsonSchema(addPuzzleSchema),
         },
+        {
+          name: "count_puzzles",
+          description: "Get the count of registered puzzles",
+          inputSchema: zodToJsonSchema(noArgSchema),
+        },
       ],
     };
   });
@@ -46,7 +51,12 @@ export const createServer = () => {
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
-          console.log(JSON.stringify(result), result);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+        case "count_puzzles": {
+          const result = countPuzzles();
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };

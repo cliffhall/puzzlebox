@@ -1,9 +1,15 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
-import { Puzzle } from "../../common/puzzle.ts";
 import { puzzleSchema } from "../../common/schemas.js";
 
 interface RegisterPuzzleResponse {
   puzzleId: string | undefined;
+}
+interface ListPuzzlesResponse {
+  puzzles: string | undefined;
+}
+
+interface CountPuzzlesResponse {
+  count: number;
 }
 
 /**
@@ -19,6 +25,16 @@ export function addPuzzle(puzzleConfig: string): RegisterPuzzleResponse {
   }
   return response;
 }
+
+/**
+ * List puzzles to the puzzle box
+ */
+export function countPuzzles(): CountPuzzlesResponse {
+  return {
+    count: PuzzleStore.countPuzzles()
+  };
+}
+
 
 /*
 

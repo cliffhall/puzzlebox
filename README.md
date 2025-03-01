@@ -70,6 +70,13 @@ Would you like me to explain any specific part of the implementation in more det
   - **Inputs:** None
   - **Returns:** JSON object with unique `puzzleId` 
 
+- **`count_puzzles`**
+
+  - Get the count of registered puzzles
+  - **Inputs:** None
+  - **Returns:** JSON object with current `count` of registered puzzles
+
+
 ## Developer Setup
 
 ### Install Dependencies

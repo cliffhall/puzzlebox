@@ -11477,6 +11477,11 @@ function addPuzzle(puzzleConfig) {
   }
   return response;
 }
+function countPuzzles() {
+  return {
+    count: PuzzleStore_default.countPuzzles()
+  };
+}
 
 // src/server/server.ts
 var createServer = () => {
@@ -11501,6 +11506,11 @@ var createServer = () => {
           name: "add_puzzle",
           description: "Register a new puzzle",
           inputSchema: zodToJsonSchema(addPuzzleSchema)
+        },
+        {
+          name: "count_puzzles",
+          description: "Get the count of registered puzzles",
+          inputSchema: zodToJsonSchema(noArgSchema)
         }
       ]
     };
@@ -11511,7 +11521,12 @@ var createServer = () => {
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
-          console.log(JSON.stringify(result), result);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+          };
+        }
+        case "count_puzzles": {
+          const result = countPuzzles();
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
           };
