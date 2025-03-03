@@ -167,9 +167,3 @@ An **MCP Server** implementation that:
 
 - `npm run test`
 - Run the unit tests
-
-
-## Links
-
-- **MCP Specification:** The complete Model Context Protocol specifications can be found [here](https://github.com/modelcontextprotocol/specification/tree/main).
-
