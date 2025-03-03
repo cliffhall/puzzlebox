@@ -1,26 +1,37 @@
 # puzzlebox
-An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts dynamically configurable [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine).
+An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts dynamically configurable [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) for managing agent and team process state.  
 
-### Core Components
+## What problem does puzzlebox address?
+Marshalling multiple agents toward a big goal is about more than just breaking down a prompt into tasks and enabling collaboration.
 
-1. **Puzzle** - The foundational FSM implementation that defines:
-  - States, transitions, and actions
-  - Guard functionality for state transitions
+A large software project typically moves through a non-linear and occasionally looping path from inception to design to building to testing to documentation to marketing to production. Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 
-2. **MCP Server** - The server implementation that:
-  - Manages puzzles
-  - Processes notifications
-  - Broadcasts state changes to clients
+You can't control all that with just a prompt. 
+
+## What is a Puzzle?
+A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write, and think about. 
+
+Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to move between them, you make twists on the planes of the cube. 
+
+An even more challenging puzzle is how create a non-trivial thing with AI agents, as that thing becomes more complex.
+
+### Properties of a Puzzle
+- A finite number of discrete states, e.g., "WriteCode", "UnitTest", "FormatCode", "TypeCheck", "RunLinter".
+- Each state may have any number of actions (including 0) that initiate transition to another state.
+- There is an initial state.
+- There is a current state that may differ after actions have been performed on the puzzle.
+- Transitions can be canceled by state exit and enter guards, e.g., Consult LLM via client sampling request.
+
+## What is Puzzlebox
+
+An **MCP Server** implementation that:
+  - Manages puzzle instances
+  - Exposes tools for: 
+    - Adding puzzles
+    - Getting a snapshot of the state and available actions for a given puzzle in the box
+    - Performing actions on a given puzzle in the box that trigger state transitions
 
 ## Usage Example
-
-The implementation includes a game state machine example with three states:
-- LOBBY: Initial state where players wait
-- PLAYING: Active game state
-- GAME_OVER: End state after a game concludes
-
-Actions START_GAME, END_GAME, and RESTART trigger transitions between these states.
-
 ```json
 {
   "initialState": "LOBBY",
@@ -34,7 +45,7 @@ Actions START_GAME, END_GAME, and RESTART trigger transitions between these stat
     "PLAYING":  {
       "name": "PLAYING",
       "actions": {
-        "END_GAME:": { "name": "END_GAME", "targetState": "GAME_OVER" }
+        "END_GAME": { "name": "END_GAME", "targetState": "GAME_OVER" }
       }
     },
     "GAME_OVER": {
@@ -49,33 +60,36 @@ Actions START_GAME, END_GAME, and RESTART trigger transitions between these stat
 ```
 ## How It Works
 
-1. Clients connect to the server via WebSockets
-2. Clients register puzzles with the server
-3. Agents perform actions by sending ACTION notifications
+1. Clients connect to the SSE server
+2. Clients register puzzles with the server for each agent or team
+3. Agents perform actions on puzzles 
 4. The server validates actions against the current state
-5. If valid, the server initiates a state transition
-6. During transition, EXITING and ENTERING notifications check guards
-7. If guards pass, the state transition completes with a CHANGED notification
+5. If action is valid, the server initiates a state transition
+6. During transition, exit and enter guards send sampling requests to the client, results of which could cancel the transition (think acceptance testing)
+7. If guards pass, the state transition completes
 8. Clients update their UI based on the new state
-
-This implementation provides a flexible foundation that you can extend for various use cases. The TypeScript typing makes it more maintainable and helps catch errors during development.
-
-Would you like me to explain any specific part of the implementation in more detail?
 
 ## MCP Tools
 
-- **`add_puzzle`**
+### **`add_puzzle`**
+#### Add a new instance of a puzzle (finite state machine).
+- **Inputs:** None
+- **Returns:** JSON object with boolean `success` and `puzzleId`
 
-  - Adds a new puzzle and provides a unique ID
-  - **Inputs:** None
-  - **Returns:** JSON object with unique `puzzleId` 
+### **`get_puzzle_snapshot`**
+#### Get a snapshot of a puzzle (its current state and available actions).
+- **Inputs:** `puzzleId`
+- **Returns:** JSON object with `currentState` and `availableActions` array
 
-- **`count_puzzles`**
+### **`perform_action_on_puzzle`**
+#### Perform an action on a puzzle (attempt a state transition).
+- **Inputs:** `puzzleId` and `actionName`
+- **Returns:** JSON object with `currentState` and `availableActions` array
 
-  - Get the count of registered puzzles
-  - **Inputs:** None
-  - **Returns:** JSON object with current `count` of registered puzzles
-
+### **`count_puzzles`**
+#### Get the count of registered puzzles
+- **Inputs:** None
+- **Returns:** JSON object with current `count` of registered puzzles
 
 ## Developer Setup
 

@@ -9682,6 +9682,13 @@ var puzzleSchema = z.object({
 var addPuzzleSchema = z.object({
   config: z.string()
 });
+var getPuzzleSnapshotSchema = z.object({
+  puzzleId: z.string()
+});
+var performActionOnPuzzleSchema = z.object({
+  puzzleId: z.string(),
+  actionName: z.string()
+});
 
 // node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
@@ -11381,17 +11388,22 @@ var Puzzle = class {
     if (puzzleConfig) this.initialState = this.initializePuzzle(puzzleConfig);
   }
   /**
-   * Get a state by name
-   * @param state
+   * Initialize the puzzle with a puzzle configuration
+   * @param puzzleConfig
+   * @returns StateName
    */
-  getState(state) {
-    return this.states.get(state);
-  }
-  /**
-   * Get the current state
-   */
-  getCurrentState() {
-    return this.currentState === void 0 ? this.initialState === void 0 ? void 0 : this.states.get(this.initialState) : this.states.get(this.currentState);
+  initializePuzzle(puzzleConfig) {
+    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
+    if (parsedPuzzle.success) {
+      const config = parsedPuzzle.data;
+      for (const [name, value] of Object.entries(config.states)) {
+        const state = value;
+        this.addState(state, name === config.initialState);
+      }
+      return config.initialState;
+    } else {
+      console.log("error");
+    }
   }
   /**
    * Add a new state to the puzzle
@@ -11399,13 +11411,15 @@ var Puzzle = class {
    * @param isInitial
    */
   addState(state, isInitial = false) {
-    this.states.set(state.name, state);
-    if (state.actions) {
-      for (const [name, value] of Object.entries(state.actions)) {
-        this.addAction(name, value);
+    const actions = state == null ? void 0 : state.actions;
+    state.actions = /* @__PURE__ */ new Map();
+    if (actions) {
+      for (const [name, value] of Object.entries(actions)) {
+        state.actions.set(name, value);
       }
     }
-    if (isInitial) this.initialState = state.name;
+    this.states.set(state.name, state);
+    if (isInitial) this.currentState = this.initialState = state.name;
   }
   /**
    * Add a new action to a state
@@ -11423,22 +11437,48 @@ var Puzzle = class {
     return success;
   }
   /**
-   * Initialize the puzzle with a puzzle configuration
-   * @param puzzleConfig
-   * @returns StateName
+   * Get the list of actions for a given state
+   * @param stateName
+   * @returns ActionName[]
    */
-  initializePuzzle(puzzleConfig) {
-    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
-    if (parsedPuzzle.success) {
-      const config = parsedPuzzle.data;
-      for (const [name, value] of Object.entries(config.states)) {
-        const state = value;
-        this.addState(state, name === config.initialState);
-      }
-      return config.initialState;
-    } else {
-      console.log("error");
+  getActions(stateName) {
+    let result = [];
+    const state = this.states.get(stateName);
+    if (state && state.actions) {
+      result = Array.from(state.actions.keys());
     }
+    return result;
+  }
+  /**
+   * Get a state by name
+   * @param stateName
+   */
+  getState(stateName) {
+    return this.states.get(stateName);
+  }
+  /**
+   * Get the current state
+   */
+  getCurrentState() {
+    return this.currentState === void 0 ? this.initialState === void 0 ? void 0 : this.states.get(this.initialState) : this.states.get(this.currentState);
+  }
+  /**
+   * Perform the state transition associated with the given action name
+   * - only works if actionName is valid for currentState
+   * - can be canceled by exit guard of current state
+   * - can be canceled by enter guard of target state
+   * @param actionName
+   * @returns boolean
+   */
+  async performAction(actionName) {
+    var _a, _b, _c;
+    let success = false;
+    const currentState = this.getCurrentState();
+    if ((_a = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _a.has(actionName)) {
+      this.currentState = (_c = (_b = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _b.get(actionName)) == null ? void 0 : _c.targetState;
+      success = true;
+    }
+    return success;
   }
 };
 
@@ -11461,6 +11501,25 @@ var PuzzleStore = class _PuzzleStore {
     return puzzle;
   }
   /**
+   * Update a puzzle
+   * @param puzzle
+   */
+  static updatePuzzle(puzzle) {
+    let success = false;
+    if (this.puzzles.has(puzzle.id)) {
+      this.puzzles.set(puzzle.id, puzzle);
+      success = true;
+    }
+    return success;
+  }
+  /**
+   * Get a puzzle by ID
+   * @param puzzleId
+   */
+  static getPuzzle(puzzleId) {
+    return this.puzzles.get(puzzleId);
+  }
+  /**
    * Clear all puzzles
    */
   static clearPuzzles() {
@@ -11478,19 +11537,53 @@ var PuzzleStore_default = PuzzleStore;
 
 // src/tools/puzzles.ts
 function addPuzzle(puzzleConfig) {
-  let response = { puzzleId: void 0 };
-  const config = puzzleSchema.safeParse(JSON.parse(puzzleConfig));
-  if (config.success) {
-    response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
-  } else {
-    console.log(config.error);
+  let response = { success: false };
+  let parsed;
+  try {
+    parsed = JSON.parse(puzzleConfig);
+    const config = puzzleSchema.safeParse(parsed);
+    if (config.success) {
+      response.success = true;
+      response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
+    }
+  } catch (error) {
+    response.success = false;
+    response.error = error instanceof Error ? error.message : "Unknown error occurred";
   }
   return response;
+}
+function getPuzzleSnapshot(puzzleId) {
+  let currentState, availableActions;
+  const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
+  if (!!puzzle && !!(puzzle == null ? void 0 : puzzle.getCurrentState())) {
+    const cs = puzzle == null ? void 0 : puzzle.getCurrentState();
+    if (cs && cs.name) {
+      currentState = cs.name;
+      availableActions = puzzle.getActions(currentState);
+    }
+  }
+  return {
+    currentState,
+    availableActions
+  };
 }
 function countPuzzles() {
   return {
     count: PuzzleStore_default.countPuzzles()
   };
+}
+async function performAction(puzzleId, actionName) {
+  var _a;
+  let success = false;
+  const snapshot = getPuzzleSnapshot(puzzleId);
+  if (snapshot && ((_a = snapshot.availableActions) == null ? void 0 : _a.includes(actionName))) {
+    const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
+    if (puzzle) {
+      success = await (puzzle == null ? void 0 : puzzle.performAction(actionName));
+      if (success) success = PuzzleStore_default.updatePuzzle(puzzle);
+    }
+  }
+  return { success };
 }
 
 // src/server.ts
@@ -11514,12 +11607,22 @@ var createServer = () => {
       tools: [
         {
           name: "add_puzzle",
-          description: "Register a new puzzle",
+          description: "Add a new instance of a puzzle (finite state machine).",
           inputSchema: zodToJsonSchema(addPuzzleSchema)
         },
         {
+          name: "get_puzzle_snapshot",
+          description: "Get a snapshot of a puzzle (its current state and available actions).",
+          inputSchema: zodToJsonSchema(getPuzzleSnapshotSchema)
+        },
+        {
+          name: "perform_action_on_puzzle",
+          description: "Perform an action on a puzzle (attempt a state transition).",
+          inputSchema: zodToJsonSchema(performActionOnPuzzleSchema)
+        },
+        {
           name: "count_puzzles",
-          description: "Get the count of registered puzzles",
+          description: "Get the count of registered puzzles.",
           inputSchema: zodToJsonSchema(noArgSchema)
         }
       ]
@@ -11531,6 +11634,20 @@ var createServer = () => {
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+          };
+        }
+        case "get_puzzle_snapshot": {
+          const args = getPuzzleSnapshotSchema.parse(request.params.arguments);
+          const result = getPuzzleSnapshot(args.puzzleId);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+          };
+        }
+        case "perform_action_on_puzzle": {
+          const args = performActionOnPuzzleSchema.parse(request.params.arguments);
+          const result = await performAction(args.puzzleId, args.actionName);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
           };

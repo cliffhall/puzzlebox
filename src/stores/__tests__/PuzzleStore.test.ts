@@ -34,6 +34,15 @@ describe("PuzzleStore", () => {
     expect(PuzzleStore.getPuzzle(puzzle2.id)).toEqual(puzzle2);
   });
 
+  it("should update a puzzle", () => {
+    const config = getTestPuzzleConfigObject();
+    const puzzle = PuzzleStore.addPuzzle(config);
+    puzzle.performAction("Open");
+    PuzzleStore.updatePuzzle(puzzle);
+    expect(puzzle.getCurrentState()?.name).toEqual("Opened");
+    expect(PuzzleStore.getPuzzle(puzzle.id)).toEqual(puzzle);
+  });
+
   it("should clear all puzzles", () => {
     const config = getTestPuzzleConfigObject();
     PuzzleStore.addPuzzle(config);

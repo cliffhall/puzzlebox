@@ -2,10 +2,15 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { noArgSchema, addPuzzleSchema, getPuzzleSnapshotSchema } from "./common/schemas.ts";
+import {
+  noArgSchema,
+  addPuzzleSchema,
+  getPuzzleSnapshotSchema,
+  performActionOnPuzzleSchema
+} from "./common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { addPuzzle, countPuzzles, getPuzzleSnapshot } from "./tools/puzzles.ts";
+import { addPuzzle, countPuzzles, getPuzzleSnapshot, performAction } from "./tools/puzzles.ts";
 
 export const createServer = () => {
   const mcpServer = new Server(
@@ -29,17 +34,22 @@ export const createServer = () => {
       tools: [
         {
           name: "add_puzzle",
-          description: "Register a new puzzle",
+          description: "Add a new instance of a puzzle (finite state machine).",
           inputSchema: zodToJsonSchema(addPuzzleSchema),
         },
         {
           name: "get_puzzle_snapshot",
-          description: "Get a snapshot of a puzzle by ID",
+          description: "Get a snapshot of a puzzle (its current state and available actions).",
           inputSchema: zodToJsonSchema(getPuzzleSnapshotSchema),
         },
         {
+          name: "perform_action_on_puzzle",
+          description: "Perform an action on a puzzle (attempt a state transition).",
+          inputSchema: zodToJsonSchema(performActionOnPuzzleSchema),
+        },
+        {
           name: "count_puzzles",
-          description: "Get the count of registered puzzles",
+          description: "Get the count of registered puzzles.",
           inputSchema: zodToJsonSchema(noArgSchema),
         },
       ],
@@ -60,6 +70,13 @@ export const createServer = () => {
         case "get_puzzle_snapshot": {
           const args = getPuzzleSnapshotSchema.parse(request.params.arguments);
           const result = getPuzzleSnapshot(args.puzzleId);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+        case "perform_action_on_puzzle": {
+          const args = performActionOnPuzzleSchema.parse(request.params.arguments);
+          const result = await performAction(args.puzzleId, args.actionName);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };

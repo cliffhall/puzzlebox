@@ -27,3 +27,10 @@ export const addPuzzleSchema = z.object({
 export const getPuzzleSnapshotSchema = z.object({
   puzzleId: z.string()
 });
+
+export const performActionOnPuzzleSchema = z.object({
+  puzzleId: z.string(),
+  actionName: z.string(),
+});
+
+
