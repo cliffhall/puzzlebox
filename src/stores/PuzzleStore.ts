@@ -1,4 +1,4 @@
-import { Puzzle } from "../common/puzzle.ts";
+import { Puzzle } from "../common/Puzzle.ts";
 import { createId } from "../common/utils.ts";
 
 class PuzzleStore {
@@ -13,6 +13,14 @@ class PuzzleStore {
     const puzzle: Puzzle = new Puzzle(puzzleId, puzzleConfig);
     this.puzzles.set(puzzle.id, puzzle);
     return puzzle;
+  }
+
+  /**
+   * Get a puzzle by ID
+   * @param puzzleId
+   */
+  static getPuzzle(puzzleId: string): Puzzle | undefined {
+    return this.puzzles.get(puzzleId);
   }
 
   /**

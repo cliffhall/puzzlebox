@@ -2,13 +2,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import {
-  noArgSchema,
-  addPuzzleSchema,
-} from "./common/schemas.ts";
+import { noArgSchema, addPuzzleSchema, getPuzzleSnapshotSchema } from "./common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { addPuzzle, countPuzzles } from "./tools/puzzles.ts";
+import { addPuzzle, countPuzzles, getPuzzleSnapshot } from "./tools/puzzles.ts";
 
 export const createServer = () => {
   const mcpServer = new Server(
@@ -36,6 +33,11 @@ export const createServer = () => {
           inputSchema: zodToJsonSchema(addPuzzleSchema),
         },
         {
+          name: "get_puzzle_snapshot",
+          description: "Get a snapshot of a puzzle by ID",
+          inputSchema: zodToJsonSchema(getPuzzleSnapshotSchema),
+        },
+        {
           name: "count_puzzles",
           description: "Get the count of registered puzzles",
           inputSchema: zodToJsonSchema(noArgSchema),
@@ -51,6 +53,13 @@ export const createServer = () => {
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+        case "get_puzzle_snapshot": {
+          const args = getPuzzleSnapshotSchema.parse(request.params.arguments);
+          const result = getPuzzleSnapshot(args.puzzleId);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };

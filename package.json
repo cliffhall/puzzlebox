@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint .",
     "lint:fix": "eslint ./src --fix",
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "files": [
     "dist"

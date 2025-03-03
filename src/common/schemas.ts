@@ -23,3 +23,7 @@ export const puzzleSchema = z.object({
 export const addPuzzleSchema = z.object({
   config: z.string(),
 });
+
+export const getPuzzleSnapshotSchema = z.object({
+  puzzleId: z.string()
+});

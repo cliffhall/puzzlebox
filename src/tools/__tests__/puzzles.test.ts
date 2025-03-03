@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
-import { addPuzzle } from "../puzzles.ts";
+import { addPuzzle, getPuzzleSnapshot } from "../puzzles.ts";
 import PuzzleStore from "../../stores/PuzzleStore.ts";
-import {getTestPuzzleConfig} from "../../common/utils.ts";
-
+import { getTestPuzzleConfigString } from "../../common/utils.ts";
 
 /**
  * Test addPuzzle
@@ -13,17 +12,31 @@ describe("addPuzzle", () => {
   });
 
   it("should register a new puzzle with a unique ID", () => {
-    const testPuzzle = getTestPuzzleConfig();
+    const testPuzzle:string = getTestPuzzleConfigString();
     const result = addPuzzle(testPuzzle);
     expect(result).toHaveProperty("puzzleId");
     expect(typeof result.puzzleId).toBe("string");
-    //expect(Puzzle.getAgent(result.agentId)).not.toBeNull();
   });
 
-  it("should increment the agent count", () => {
-    const testPuzzle = getTestPuzzleConfig();
+
+  it("should increment the puzzle count", () => {
+    const testPuzzle = getTestPuzzleConfigString();
     const initialCount = PuzzleStore.countPuzzles();
     addPuzzle(testPuzzle);
     expect(PuzzleStore.countPuzzles()).toBe(initialCount + 1);
   });
+
+  it("should get a snapshot of a puzzle by ID", () => {
+    const testPuzzle = getTestPuzzleConfigString();
+    const result =  addPuzzle(testPuzzle);
+    expect(result).toHaveProperty("puzzleId");
+    const id = result.puzzleId || "";
+    const snapshot = getPuzzleSnapshot(id);
+    expect(snapshot).toHaveProperty("currentState");
+    expect(snapshot).toHaveProperty("availableActions");
+    expect(snapshot.currentState).toEqual("Closed");
+    expect(snapshot.availableActions).toEqual(["Open", "Lock"]);
+
+  });
+
 });

@@ -2,35 +2,41 @@ export function createId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
 }
 
-export function getTestPuzzleConfig(): string {
-  return JSON.stringify({
-    "initialState": "Closed",
-    "states": {
-      "Closed": {
-        "name": "Closed",
-        "actions": {
-          "Open": { "name": "Open", "targetState": "Opened" },
-          "Lock": { "name": "Lock", "targetState": "Locked" }
-        },
-        "exitGuard": "leavingClosedState"
+const configObj = {
+  initialState: "Closed",
+  states: {
+    Closed: {
+      name: "Closed",
+      actions: {
+        Open: { name: "Open", targetState: "Opened" },
+        Lock: { name: "Lock", targetState: "Locked" },
       },
-      "Opened":  {
-        "name": "Opened",
-        "actions": {
-          "Close:": { "name": "Close", "targetState": "Closed" }
-        },
-        "enterGuard": "enteringClosedState"
+      exitGuard: "Closed/guard/exit",
+    },
+    Opened: {
+      name: "Opened",
+      actions: {
+        "Close:": { name: "Close", targetState: "Closed" },
       },
-      "Locked": {
-        "name": "Locked",
-        "actions": {
-          "Unlock": { "name": "Unlock", "targetState": "Closed" },
-          "KickIn": { "name": "KickIn", "targetState": "KickedIn" }
-        }
+      enterGuard: "Closed/guard/enter",
+    },
+    Locked: {
+      name: "Locked",
+      actions: {
+        Unlock: { name: "Unlock", targetState: "Closed" },
+        KickIn: { name: "KickIn", targetState: "KickedIn" },
       },
-      "KickedIn": {
-        "name": "KickedIn"
-      }
-    }
-  });
+    },
+    KickedIn: {
+      name: "KickedIn",
+    },
+  },
+};
+
+export function getTestPuzzleConfigString(): string {
+  return JSON.stringify(configObj);
+}
+
+export function getTestPuzzleConfigObject(): object {
+  return configObj;
 }

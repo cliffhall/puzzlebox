@@ -11370,7 +11370,7 @@ var Server = class extends Protocol {
   }
 };
 
-// src/common/puzzle.ts
+// src/common/Puzzle.ts
 var Puzzle = class {
   id;
   states = /* @__PURE__ */ new Map();
@@ -11391,7 +11391,7 @@ var Puzzle = class {
    * Get the current state
    */
   getCurrentState() {
-    return this.currentState === void 0 ? void 0 : this.states.get(this.currentState);
+    return this.currentState === void 0 ? this.initialState === void 0 ? void 0 : this.states.get(this.initialState) : this.states.get(this.currentState);
   }
   /**
    * Add a new state to the puzzle
@@ -11400,7 +11400,11 @@ var Puzzle = class {
    */
   addState(state, isInitial = false) {
     this.states.set(state.name, state);
-    console.log(this.states.get(state.name));
+    if (state.actions) {
+      for (const [name, value] of Object.entries(state.actions)) {
+        this.addAction(name, value);
+      }
+    }
     if (isInitial) this.initialState = state.name;
   }
   /**

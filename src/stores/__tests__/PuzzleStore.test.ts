@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
-import {getTestPuzzleConfig} from "../../common/utils.ts";
+import { getTestPuzzleConfigString, getTestPuzzleConfigObject } from "../../common/utils.ts";
 import PuzzleStore from "../PuzzleStore.ts";
 
 /**
@@ -12,18 +12,34 @@ describe("PuzzleStore", () => {
   });
 
   it("should register a puzzle with a unique id", () => {
-    const config = JSON.parse(getTestPuzzleConfig())
+    const config = getTestPuzzleConfigObject();
     const puzzle = PuzzleStore.addPuzzle(config);
     expect(puzzle).toBeDefined();
     expect(puzzle.id).toBeDefined();
   });
 
   it("should return the correct puzzle count", () => {
-    const config = JSON.parse(getTestPuzzleConfig())
+    const config = getTestPuzzleConfigObject();
     PuzzleStore.addPuzzle(config);
     PuzzleStore.addPuzzle(config);
     PuzzleStore.addPuzzle(config);
     expect(PuzzleStore.countPuzzles()).toBe(3);
   });
 
+  it("should get a puzzle by ID", () => {
+    const config = getTestPuzzleConfigObject();
+    const puzzle1 = PuzzleStore.addPuzzle(config);
+    const puzzle2 = PuzzleStore.addPuzzle(config);
+    expect(PuzzleStore.getPuzzle(puzzle1.id)).toEqual(puzzle1);
+    expect(PuzzleStore.getPuzzle(puzzle2.id)).toEqual(puzzle2);
+  });
+
+  it("should clear all puzzles", () => {
+    const config = getTestPuzzleConfigObject();
+    PuzzleStore.addPuzzle(config);
+    PuzzleStore.addPuzzle(config);
+    PuzzleStore.addPuzzle(config);
+    PuzzleStore.clearPuzzles();
+    expect(PuzzleStore.countPuzzles()).toBe(0);
+  });
 });

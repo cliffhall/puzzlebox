@@ -1,29 +1,57 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
 import { puzzleSchema } from "../common/schemas.ts";
+import { ActionName, StateName } from "../common/types.js";
 
-interface RegisterPuzzleResponse {
+interface AddPuzzleResponse {
   puzzleId: string | undefined;
-}
-interface ListPuzzlesResponse {
-  puzzles: string | undefined;
 }
 
 interface CountPuzzlesResponse {
   count: number;
 }
 
+interface GetPuzzleSnapshotResponse {
+  currentState: StateName | undefined;
+  availableActions: ActionName[] | undefined;
+}
+
 /**
  * Add a puzzle to the puzzle box
  */
-export function addPuzzle(puzzleConfig: string): RegisterPuzzleResponse {
-  let response: RegisterPuzzleResponse = { puzzleId: undefined };
+export function addPuzzle(puzzleConfig: string): AddPuzzleResponse {
+  let response: AddPuzzleResponse = { puzzleId: undefined };
   const config = puzzleSchema.safeParse(JSON.parse(puzzleConfig));
   if (config.success) {
-      response.puzzleId = PuzzleStore.addPuzzle(config.data).id
+    response.puzzleId = PuzzleStore.addPuzzle(config.data).id;
   } else {
-    console.log(config.error)
+    console.log(config.error);
   }
   return response;
+}
+
+/**
+ * Get a snapshot of a puzzle by ID
+ * Snapshot contains:
+ * - currentState - name of the current state
+ * - availableActions - an array of available actions for the current state
+ * @param puzzleId
+ */
+export function getPuzzleSnapshot(puzzleId: string): GetPuzzleSnapshotResponse {
+
+  let currentState, availableActions;
+  const puzzle = PuzzleStore.getPuzzle(puzzleId);
+  if (!!puzzle && !!puzzle?.getCurrentState()) {
+    const cs= puzzle?.getCurrentState();
+    if (cs && cs.name) {
+        currentState = cs.name;
+        availableActions = puzzle.getActions(currentState);
+      }
+  }
+
+  return  {
+    currentState,
+    availableActions
+  }
 }
 
 /**
@@ -31,47 +59,6 @@ export function addPuzzle(puzzleConfig: string): RegisterPuzzleResponse {
  */
 export function countPuzzles(): CountPuzzlesResponse {
   return {
-    count: PuzzleStore.countPuzzles()
+    count: PuzzleStore.countPuzzles(),
   };
 }
-
-
-/*
-
-// Example usage:
-const example = {
-  "initialState": "Closed",
-  "states": {
-    "Closed": {
-      "name": "Closed",
-      "actions": {
-        "Open": { "name": "Open", "targetState": "Opened" },
-        "Lock": { "name": "Lock", "targetState": "Locked" }
-      },
-      "exitGuard": "leavingClosedState"
-    },
-   "Opened":  {
-      "name": "Opened",
-      "actions": {
-        "Close:": { "name": "Close", "targetState": "Closed" }
-      },
-      "enterGuard": "enteringClosedState"
-    },
-    "Locked": {
-      "name": "Locked",
-      "actions": {
-        "Unlock": { "name": "Unlock", "targetState": "Closed" },
-        "KickIn": { "name": "KickIn", "targetState": "KickedIn" }
-      }
-    },
-    "KickedIn": {
-      "name": "KickedIn"
-    }
-  }
-}
-
-const result = PuzzleSchema.safeParse(example);
-console.log(result.success ? "Valid!" : result.error);
-*/
-
-
