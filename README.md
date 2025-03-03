@@ -31,7 +31,7 @@ An **MCP Server** implementation that:
     - Getting a snapshot of the state and available actions for a given puzzle in the box
     - Performing actions on a given puzzle in the box that trigger state transitions
 
-## Usage Example
+## Simple Example
 ```json
 {
   "initialState": "LOBBY",
@@ -56,10 +56,29 @@ An **MCP Server** implementation that:
     }
   }
 }
-
 ```
-## How It Works
 
+## Screenshots
+### 1 - Add Puzzle
+![1. add_puzzle](images/1_add_puzzle.png)
+
+### 2 - Get Puzzle Snapshot (Initial State)
+![2. get_puzzle_snapshot](images/2_get_puzzle_snapshot.png)
+
+### 3 - Perform Action On Puzzle
+![3. perform_action_on_puzzle](images/3_perform_action_on_puzzle.png)
+
+### 4 - Get Puzzle Snapshot (New State)
+![4. get_puzzle_snapshot](images/4_get_puzzle_snapshot.png)
+
+### 5 - Perform Action On Puzzle
+![5. perform_action_on_puzzle](images/5_perform_action_on_puzzle.png)
+
+### 4 - Get Puzzle Snapshot (Another New State)
+![6. get_puzzle_snapshot](images/6_get_puzzle_snapshot.png)
+
+
+## How It Works
 1. Clients connect to the SSE server
 2. Clients register puzzles with the server for each agent or team
 3. Agents perform actions on puzzles 
