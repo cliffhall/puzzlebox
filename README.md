@@ -80,7 +80,6 @@ An **MCP Server** implementation that:
 ### 4 - Get Puzzle Snapshot (Another New State)
 ![6. get_puzzle_snapshot](images/6_get_puzzle_snapshot.png)
 
-
 ## How It Works
 1. Clients connect to a puzzlebox SSE server.
 2. Clients register puzzles with the server for each agent or team.
@@ -93,22 +92,22 @@ An **MCP Server** implementation that:
 
 ## MCP Tools
 
-### **`add_puzzle`**
+### ⚙️ **`add_puzzle`**
 #### Add a new instance of a puzzle (finite state machine).
 - **Inputs:** None
 - **Returns:** JSON object with boolean `success` and `puzzleId`
 
-### **`get_puzzle_snapshot`**
+### ⚙️ **`get_puzzle_snapshot`**
 #### Get a snapshot of a puzzle (its current state and available actions).
 - **Inputs:** `puzzleId`
 - **Returns:** JSON object with `currentState` and `availableActions` array
 
-### **`perform_action_on_puzzle`**
+### ⚙️ **`perform_action_on_puzzle`**
 #### Perform an action on a puzzle (attempt a state transition).
 - **Inputs:** `puzzleId` and `actionName`
 - **Returns:** JSON object with `currentState` and `availableActions` array
 
-### **`count_puzzles`**
+### ⚙️ **`count_puzzles`**
 #### Get the count of registered puzzles
 - **Inputs:** None
 - **Returns:** JSON object with current `count` of registered puzzles
