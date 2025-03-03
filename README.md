@@ -82,7 +82,7 @@ An **MCP Server** implementation that:
 
 
 ## How It Works
-1. Clients connect to the puzzlebox SSE server.
+1. Clients connect to a puzzlebox SSE server.
 2. Clients register puzzles with the server for each agent or team.
 3. Agents perform actions on puzzles.
 4. The puzzlebox server ensures that an attempted action is valid for the current state.
