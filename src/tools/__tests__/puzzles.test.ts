@@ -53,11 +53,11 @@ describe("addPuzzle", () => {
 
   it("should perform an action on a puzzle", async () => {
     const testPuzzle = getTestPuzzleConfigString();
-    const result =  addPuzzle(testPuzzle);
-    const id = result.puzzleId || "";
+    const result1 =  addPuzzle(testPuzzle);
+    const id = result1.puzzleId || "";
     const ACTION_NAME = "Open";
-    const success = await performAction(id, ACTION_NAME);
-    expect(success).toBe(true);
+    const result2 = await performAction(id, ACTION_NAME);
+    expect(result2.success).toBe(true);
     const snapshot = getPuzzleSnapshot(id);
     expect(snapshot.currentState).toEqual("Opened");
   });

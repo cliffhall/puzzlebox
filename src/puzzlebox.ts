@@ -28,7 +28,6 @@ export const createServer = () => {
     },
   );
 
-  // Register MCP request handlers
   mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -56,7 +55,6 @@ export const createServer = () => {
     };
   });
 
-  //
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       switch (request.params.name) {

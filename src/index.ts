@@ -1,6 +1,6 @@
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
-import { createServer } from "./server.ts";
+import { createServer } from "./puzzlebox.ts";
 
 const app = express();
 
@@ -20,7 +20,7 @@ app.get("/sse", async (req, res) => {
 });
 
 app.post("/message", async (req, res) => {
-  console.log("Received message");
+  console.log("Received message", req);
 
   await transport.handlePostMessage(req, res);
 });

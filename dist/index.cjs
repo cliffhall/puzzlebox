@@ -9689,6 +9689,15 @@ var performActionOnPuzzleSchema = z.object({
   puzzleId: z.string(),
   actionName: z.string()
 });
+var invokeTransitionGuard = z.object({
+  prompt: z.string().describe("The prompt to send to the LLM"),
+  maxTokens: z.number().default(100).describe("Maximum number of tokens to generate")
+});
+var PuzzleStateChangedNotificationSchema = z.object({
+  method: z.literal("notifications/puzzle/state_changed"),
+  puzzleId: z.string(),
+  newState: z.string()
+});
 
 // node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
@@ -11586,7 +11595,7 @@ async function performAction(puzzleId, actionName) {
   return { success };
 }
 
-// src/server.ts
+// src/puzzlebox.ts
 var createServer = () => {
   const mcpServer2 = new Server(
     {
@@ -11602,6 +11611,37 @@ var createServer = () => {
       }
     }
   );
+  let subscriptions = /* @__PURE__ */ new Set();
+  let updateInterval;
+  updateInterval = setInterval(async () => {
+    for (const uri of subscriptions) {
+      await mcpServer2.notification({
+        method: "notifications/resources/updated",
+        params: { uri }
+      });
+    }
+  }, 5e3);
+  const requestSampling = async (context, uri, maxTokens = 100) => {
+    const request = {
+      method: "sampling/createMessage",
+      params: {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Resource ${uri} context: ${context}`
+            }
+          }
+        ],
+        systemPrompt: "You are a helpful assistant.",
+        maxTokens,
+        temperature: 0.7,
+        includeContext: "thisServer"
+      }
+    };
+    return await mcpServer2.request(request, CreateMessageResultSchema);
+  };
   mcpServer2.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -11667,6 +11707,16 @@ var createServer = () => {
       );
     }
   });
+  mcpServer2.setRequestHandler(SubscribeRequestSchema, async (request) => {
+    const { uri } = request.params;
+    subscriptions.add(uri);
+    await requestSampling("A new subscription was started", uri);
+    return {};
+  });
+  mcpServer2.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+    subscriptions.delete(request.params.uri);
+    return {};
+  });
   return { mcpServer: mcpServer2 };
 };
 
@@ -11684,7 +11734,7 @@ app.get("/sse", async (req, res) => {
   };
 });
 app.post("/message", async (req, res) => {
-  console.log("Received message");
+  console.log("Received message", req);
   await transport.handlePostMessage(req, res);
 });
 var PORT = process.env.PORT || 3001;
