@@ -87,7 +87,7 @@ An **MCP Server** implementation that:
 3. Agents perform actions on puzzles 
 4. The puzzlebox server ensures that an attempted action is valid for the current state
 5. If an action is valid, a transition to the target state is initiated
-6. During transition, exit and enter guards send sampling requests to the client, results of which could cancel the transition (think acceptance testing)
+6. During transition, optional exit and enter guards may send sampling requests to the client, the results of which could lead to cancellation of the transition (think acceptance testing by stakeholders)
 7. If guards pass, the state transition completes
 8. Clients update their UI based on the new state
 
