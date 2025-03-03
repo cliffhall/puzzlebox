@@ -85,8 +85,8 @@ An **MCP Server** implementation that:
 1. Clients connect to the SSE server
 2. Clients register puzzles with the server for each agent or team
 3. Agents perform actions on puzzles 
-4. The server validates actions against the current state
-5. If action is valid, the server initiates a state transition
+4. The ensures that an attempted action is valid for the current state
+5. If action is valid, the server initiates a transition to the target state
 6. During transition, exit and enter guards send sampling requests to the client, results of which could cancel the transition (think acceptance testing)
 7. If guards pass, the state transition completes
 8. Clients update their UI based on the new state
