@@ -59,6 +59,9 @@ An **MCP Server** implementation that:
 ```
 
 ## Screenshots
+### 0 - List Tools
+![0list_tools](images/0_list_tools.png)
+
 ### 1 - Add Puzzle
 ![1. add_puzzle](images/1_add_puzzle.png)
 
