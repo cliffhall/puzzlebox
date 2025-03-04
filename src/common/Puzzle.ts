@@ -40,14 +40,14 @@ export class Puzzle {
   public addState(state: State, isInitial: boolean = false): void {
     const actions = state?.actions;
     state.actions = new Map<ActionName, Action>();
-    if(actions) {
+    if (actions) {
       for (const [name, value] of Object.entries(actions)) {
         state.actions.set(name, value);
       }
     }
     this.states.set(state.name, state);
 
-    if (isInitial) this.currentState =  this.initialState = state.name;
+    if (isInitial) this.currentState = this.initialState = state.name;
   }
 
   /**
@@ -118,5 +118,4 @@ export class Puzzle {
     }
     return success;
   }
-
 }

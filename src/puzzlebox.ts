@@ -1,18 +1,29 @@
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
+  ListToolsRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   noArgSchema,
   addPuzzleSchema,
+  subscribeToPuzzleSchema,
   getPuzzleSnapshotSchema,
-  performActionOnPuzzleSchema
+  performActionOnPuzzleSchema,
 } from "./common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { addPuzzle, countPuzzles, getPuzzleSnapshot, performAction } from "./tools/puzzles.ts";
+import {
+  addPuzzle,
+  countPuzzles,
+  getPuzzleSnapshot,
+  performAction,
+} from "./tools/puzzles.ts";
 
-export const createServer = () => {
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+
+export const createServer = (
+  subscribers: Map<string, Set<SSEServerTransport>>,
+  transportsBySessionId: Map<string, SSEServerTransport>,
+) => {
   const mcpServer = new Server(
     {
       name: "puzzlebox",
@@ -21,7 +32,11 @@ export const createServer = () => {
     {
       capabilities: {
         prompts: {},
-        resources: {},
+        resources: {
+          "puzzlebox:/puzzle/{id}": {
+            description: "A puzzle with the given ID",
+          },
+        },
         tools: {},
         logging: {},
       },
@@ -38,13 +53,20 @@ export const createServer = () => {
         },
         {
           name: "get_puzzle_snapshot",
-          description: "Get a snapshot of a puzzle (its current state and available actions).",
+          description:
+            "Get a snapshot of a puzzle (its current state and available actions).",
           inputSchema: zodToJsonSchema(getPuzzleSnapshotSchema),
         },
         {
           name: "perform_action_on_puzzle",
-          description: "Perform an action on a puzzle (attempt a state transition).",
+          description:
+            "Perform an action on a puzzle (attempt a state transition).",
           inputSchema: zodToJsonSchema(performActionOnPuzzleSchema),
+        },
+        {
+          name: "subscribe_to_puzzle",
+          description: "Subscribe to state changes of a puzzle.",
+          inputSchema: zodToJsonSchema(subscribeToPuzzleSchema),
         },
         {
           name: "count_puzzles",
@@ -56,8 +78,25 @@ export const createServer = () => {
   });
 
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+
     try {
       switch (request.params.name) {
+        case "subscribe_to_puzzle": {
+          const args = subscribeToPuzzleSchema.parse(request.params.arguments);
+          const puzzleId = args.puzzleId;
+          const sessionId = args.sessionId;
+          const transport = transportsBySessionId.get(sessionId);
+          if (!transport) {
+            throw new Error("No transport found for sessionId");
+          }
+          if (!subscribers.has(puzzleId)) {
+            subscribers.set(puzzleId, new Set());
+          }
+          subscribers.get(puzzleId)!.add(transport);
+          return {
+            content: [{ type: "text", text: JSON.stringify({ success: true }, null, 2) }],
+          };
+        }
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
@@ -73,10 +112,27 @@ export const createServer = () => {
           };
         }
         case "perform_action_on_puzzle": {
-          const args = performActionOnPuzzleSchema.parse(request.params.arguments);
-          const result = await performAction(args.puzzleId, args.actionName);
+          const args = performActionOnPuzzleSchema.parse(
+            request.params.arguments,
+          );
+          const success = await performAction(args.puzzleId, args.actionName);
+          if (success) {
+            const snapshot = getPuzzleSnapshot(args.puzzleId);
+            const newState = snapshot.currentState;
+            const subscribedTransports =
+              subscribers.get(args.puzzleId) || new Set();
+            for (const subTransport of subscribedTransports) {
+              subTransport.send({
+                jsonrpc: "2.0",
+                method: "notifications/puzzle/state_changed",
+                params: { puzzleId: args.puzzleId, newState },
+              });
+            }
+          }
           return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            content: [
+              { type: "text", text: JSON.stringify({ success }, null, 2) },
+            ],
           };
         }
         case "count_puzzles": {

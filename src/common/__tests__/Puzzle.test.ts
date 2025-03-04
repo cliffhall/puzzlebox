@@ -6,7 +6,6 @@ import { Puzzle } from "../Puzzle.ts";
  * Test Puzzle Entity
  */
 describe("Puzzle", () => {
-
   it("should construct a puzzle with id alone", () => {
     const PUZZLE_ID = "puzzle-123";
     const puzzle = new Puzzle(PUZZLE_ID);
@@ -50,7 +49,7 @@ describe("Puzzle", () => {
     const PUZZLE_ID = "puzzle-123";
     const PUZZLE_CONFIG = getTestPuzzleConfigObject();
     const STATE_NAME = "Closed";
-    const ACTION = {"name": "Knock", "targetState": "Closed"};
+    const ACTION = { name: "Knock", targetState: "Closed" };
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
     const state = puzzle.getState(STATE_NAME);
     puzzle.addAction(STATE_NAME, ACTION);
@@ -77,5 +76,4 @@ describe("Puzzle", () => {
     expect(success).toBe(true);
     expect(puzzle.getCurrentState()?.name).toEqual(TARGET_STATE);
   });
-
 });

@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
-import { getTestPuzzleConfigString, getTestPuzzleConfigObject } from "../../common/utils.ts";
+import {
+  getTestPuzzleConfigObject,
+} from "../../common/utils.ts";
 import PuzzleStore from "../PuzzleStore.ts";
 
 /**
