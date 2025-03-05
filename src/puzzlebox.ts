@@ -117,16 +117,14 @@ export const createServer = (
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
-            const snapshot = getPuzzleSnapshot(args.puzzleId);
-            const newState = snapshot.currentState;
             const subscribedTransports =
               subscribers.get(args.puzzleId) || new Set();
             for (const subTransport of subscribedTransports) {
-              console.log("Subscribed transport", subTransport);
+              console.log("Messaging Subscribed transport");
               await subTransport.send({
                 jsonrpc: "2.0",
-                method: "notifications/puzzle/state_changed",
-                params: { puzzleId: args.puzzleId, newState },
+                method: "notifications/resources/updated",
+                params: { uri: `puzzlebox:/puzzle/${args.puzzleId}` },
               });
             }
           }
