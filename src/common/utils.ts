@@ -40,3 +40,5 @@ export function getTestPuzzleConfigString(): string {
 export function getTestPuzzleConfigObject(): object {
   return configObj;
 }
+
+export const PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";

@@ -37,6 +37,12 @@ class PuzzleStore {
   }
 
   /**
+   * Get a list of registered puzzle ids
+   */
+  static getPuzzleList():string[] {
+    return Array.from(this.puzzles.keys());
+  }
+  /**
    * Clear all puzzles
    */
   static clearPuzzles() {

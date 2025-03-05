@@ -1,6 +1,7 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
 import { puzzleSchema } from "../common/schemas.ts";
-import { ActionName, StateName } from "../common/types.js";
+import { ActionName, StateName } from "../common/types.ts";
+import { PUZZLE_RESOURCE_PATH } from "../common/utils.ts";
 
 interface AddPuzzleResponse {
   success: boolean;
@@ -10,6 +11,16 @@ interface AddPuzzleResponse {
 
 interface CountPuzzlesResponse {
   count: number;
+}
+
+interface GetPuzzleListEntry {
+    uri: string,
+    name: string,
+    mimeType: string
+}
+
+interface GetPuzzleListResponse {
+  puzzles: GetPuzzleListEntry[];
 }
 
 interface GetPuzzleSnapshotResponse {
@@ -73,6 +84,18 @@ export function countPuzzles(): CountPuzzlesResponse {
   return {
     count: PuzzleStore.countPuzzles(),
   };
+}
+
+export function getPuzzleList(): GetPuzzleListResponse {
+  return {
+    puzzles: PuzzleStore.getPuzzleList().map((puzzleId) => {
+      return {
+        uri: `${PUZZLE_RESOURCE_PATH}${puzzleId}`,
+        name: puzzleId,
+        mimeType: "text/plain",
+      }
+    })
+  }
 }
 
 /**

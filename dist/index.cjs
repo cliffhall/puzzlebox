@@ -9544,6 +9544,7 @@ var McpError = class extends Error {
     super(`MCP error ${code}: ${message}`);
     this.code = code;
     this.data = data;
+    this.name = "McpError";
   }
 };
 
@@ -9678,10 +9679,6 @@ var puzzleSchema = z.object({
 });
 var addPuzzleSchema = z.object({
   config: z.string()
-});
-var subscribeToPuzzleSchema = z.object({
-  puzzleId: z.string(),
-  sessionId: z.string()
 });
 var getPuzzleSnapshotSchema = z.object({
   puzzleId: z.string()
@@ -10927,6 +10924,7 @@ var Protocol = class {
     this._notificationHandlers = /* @__PURE__ */ new Map();
     this._responseHandlers = /* @__PURE__ */ new Map();
     this._progressHandlers = /* @__PURE__ */ new Map();
+    this._timeoutInfo = /* @__PURE__ */ new Map();
     this.setNotificationHandler(CancelledNotificationSchema, (notification) => {
       const controller = this._requestHandlerAbortControllers.get(notification.params.requestId);
       controller === null || controller === void 0 ? void 0 : controller.abort(notification.params.reason);
@@ -10940,13 +10938,42 @@ var Protocol = class {
       (_request) => ({})
     );
   }
+  _setupTimeout(messageId, timeout, maxTotalTimeout, onTimeout) {
+    this._timeoutInfo.set(messageId, {
+      timeoutId: setTimeout(onTimeout, timeout),
+      startTime: Date.now(),
+      timeout,
+      maxTotalTimeout,
+      onTimeout
+    });
+  }
+  _resetTimeout(messageId) {
+    const info = this._timeoutInfo.get(messageId);
+    if (!info)
+      return false;
+    const totalElapsed = Date.now() - info.startTime;
+    if (info.maxTotalTimeout && totalElapsed >= info.maxTotalTimeout) {
+      this._timeoutInfo.delete(messageId);
+      throw new McpError(ErrorCode.RequestTimeout, "Maximum total timeout exceeded", { maxTotalTimeout: info.maxTotalTimeout, totalElapsed });
+    }
+    clearTimeout(info.timeoutId);
+    info.timeoutId = setTimeout(info.onTimeout, info.timeout);
+    return true;
+  }
+  _cleanupTimeout(messageId) {
+    const info = this._timeoutInfo.get(messageId);
+    if (info) {
+      clearTimeout(info.timeoutId);
+      this._timeoutInfo.delete(messageId);
+    }
+  }
   /**
    * Attaches to the given transport, starts it, and starts listening for messages.
    *
    * The Protocol object assumes ownership of the Transport, replacing any callbacks that have already been set, and expects that it is the only user of the Transport instance going forward.
    */
-  async connect(transport) {
-    this._transport = transport;
+  async connect(transport2) {
+    this._transport = transport2;
     this._transport.onclose = () => {
       this._onclose();
     };
@@ -11033,22 +11060,33 @@ var Protocol = class {
   }
   _onprogress(notification) {
     const { progressToken, ...params } = notification.params;
-    const handler = this._progressHandlers.get(Number(progressToken));
-    if (handler === void 0) {
+    const messageId = Number(progressToken);
+    const handler = this._progressHandlers.get(messageId);
+    if (!handler) {
       this._onerror(new Error(`Received a progress notification for an unknown token: ${JSON.stringify(notification)}`));
       return;
+    }
+    const responseHandler = this._responseHandlers.get(messageId);
+    if (this._timeoutInfo.has(messageId) && responseHandler) {
+      try {
+        this._resetTimeout(messageId);
+      } catch (error) {
+        responseHandler(error);
+        return;
+      }
     }
     handler(params);
   }
   _onresponse(response) {
-    const messageId = response.id;
-    const handler = this._responseHandlers.get(Number(messageId));
+    const messageId = Number(response.id);
+    const handler = this._responseHandlers.get(messageId);
     if (handler === void 0) {
       this._onerror(new Error(`Received a response for an unknown message ID: ${JSON.stringify(response)}`));
       return;
     }
-    this._responseHandlers.delete(Number(messageId));
-    this._progressHandlers.delete(Number(messageId));
+    this._responseHandlers.delete(messageId);
+    this._progressHandlers.delete(messageId);
+    this._cleanupTimeout(messageId);
     if ("result" in response) {
       handler(response);
     } else {
@@ -11095,12 +11133,23 @@ var Protocol = class {
           _meta: { progressToken: messageId }
         };
       }
-      let timeoutId = void 0;
+      const cancel = (reason) => {
+        var _a2;
+        this._responseHandlers.delete(messageId);
+        this._progressHandlers.delete(messageId);
+        this._cleanupTimeout(messageId);
+        (_a2 = this._transport) === null || _a2 === void 0 ? void 0 : _a2.send({
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: {
+            requestId: messageId,
+            reason: String(reason)
+          }
+        }).catch((error) => this._onerror(new Error(`Failed to send cancellation: ${error}`)));
+        reject(reason);
+      };
       this._responseHandlers.set(messageId, (response) => {
         var _a2;
-        if (timeoutId !== void 0) {
-          clearTimeout(timeoutId);
-        }
         if ((_a2 = options === null || options === void 0 ? void 0 : options.signal) === null || _a2 === void 0 ? void 0 : _a2.aborted) {
           return;
         }
@@ -11114,35 +11163,15 @@ var Protocol = class {
           reject(error);
         }
       });
-      const cancel = (reason) => {
-        var _a2;
-        this._responseHandlers.delete(messageId);
-        this._progressHandlers.delete(messageId);
-        (_a2 = this._transport) === null || _a2 === void 0 ? void 0 : _a2.send({
-          jsonrpc: "2.0",
-          method: "notifications/cancelled",
-          params: {
-            requestId: messageId,
-            reason: String(reason)
-          }
-        }).catch((error) => this._onerror(new Error(`Failed to send cancellation: ${error}`)));
-        reject(reason);
-      };
       (_c = options === null || options === void 0 ? void 0 : options.signal) === null || _c === void 0 ? void 0 : _c.addEventListener("abort", () => {
         var _a2;
-        if (timeoutId !== void 0) {
-          clearTimeout(timeoutId);
-        }
         cancel((_a2 = options === null || options === void 0 ? void 0 : options.signal) === null || _a2 === void 0 ? void 0 : _a2.reason);
       });
       const timeout = (_d = options === null || options === void 0 ? void 0 : options.timeout) !== null && _d !== void 0 ? _d : DEFAULT_REQUEST_TIMEOUT_MSEC;
-      timeoutId = setTimeout(() => cancel(new McpError(ErrorCode.RequestTimeout, "Request timed out", {
-        timeout
-      })), timeout);
+      const timeoutHandler = () => cancel(new McpError(ErrorCode.RequestTimeout, "Request timed out", { timeout }));
+      this._setupTimeout(messageId, timeout, options === null || options === void 0 ? void 0 : options.maxTotalTimeout, timeoutHandler);
       this._transport.send(jsonrpcRequest).catch((error) => {
-        if (timeoutId !== void 0) {
-          clearTimeout(timeoutId);
-        }
+        this._cleanupTimeout(messageId);
         reject(error);
       });
     });
@@ -11487,6 +11516,7 @@ var Puzzle = class {
 function createId(prefix) {
   return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
 }
+var PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";
 
 // src/stores/PuzzleStore.ts
 var PuzzleStore = class _PuzzleStore {
@@ -11519,6 +11549,12 @@ var PuzzleStore = class _PuzzleStore {
    */
   static getPuzzle(puzzleId) {
     return this.puzzles.get(puzzleId);
+  }
+  /**
+   * Get a list of registered puzzle ids
+   */
+  static getPuzzleList() {
+    return Array.from(this.puzzles.keys());
   }
   /**
    * Clear all puzzles
@@ -11573,6 +11609,17 @@ function countPuzzles() {
     count: PuzzleStore_default.countPuzzles()
   };
 }
+function getPuzzleList() {
+  return {
+    puzzles: PuzzleStore_default.getPuzzleList().map((puzzleId) => {
+      return {
+        uri: `${PUZZLE_RESOURCE_PATH}${puzzleId}`,
+        name: puzzleId,
+        mimeType: "text/plain"
+      };
+    })
+  };
+}
 async function performAction(puzzleId, actionName) {
   var _a;
   let success = false;
@@ -11588,8 +11635,9 @@ async function performAction(puzzleId, actionName) {
 }
 
 // src/puzzlebox.ts
-var createServer = (subscribers2, transportsBySessionId2) => {
-  const mcpServer2 = new Server(
+var PUZZLE_RESOURCE_PATH2 = "puzzlebox://puzzle/";
+var createServer = () => {
+  const server2 = new Server(
     {
       name: "puzzlebox",
       version: "1.0.0"
@@ -11597,17 +11645,13 @@ var createServer = (subscribers2, transportsBySessionId2) => {
     {
       capabilities: {
         prompts: {},
-        resources: {
-          "puzzlebox:/puzzle/{id}": {
-            description: "A puzzle with the given ID"
-          }
-        },
+        resources: { subscribe: true },
         tools: {},
         logging: {}
       }
     }
   );
-  mcpServer2.setRequestHandler(ListToolsRequestSchema, async () => {
+  server2.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
         {
@@ -11626,11 +11670,6 @@ var createServer = (subscribers2, transportsBySessionId2) => {
           inputSchema: zodToJsonSchema(performActionOnPuzzleSchema)
         },
         {
-          name: "subscribe_to_puzzle",
-          description: "Subscribe to state changes of a puzzle.",
-          inputSchema: zodToJsonSchema(subscribeToPuzzleSchema)
-        },
-        {
           name: "count_puzzles",
           description: "Get the count of registered puzzles.",
           inputSchema: zodToJsonSchema(noArgSchema)
@@ -11638,25 +11677,9 @@ var createServer = (subscribers2, transportsBySessionId2) => {
       ]
     };
   });
-  mcpServer2.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server2.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       switch (request.params.name) {
-        case "subscribe_to_puzzle": {
-          const args = subscribeToPuzzleSchema.parse(request.params.arguments);
-          const puzzleId = args.puzzleId;
-          const sessionId = args.sessionId;
-          const transport = transportsBySessionId2.get(sessionId);
-          if (!transport) {
-            throw new Error("No transport found for sessionId");
-          }
-          if (!subscribers2.has(puzzleId)) {
-            subscribers2.set(puzzleId, /* @__PURE__ */ new Set());
-          }
-          subscribers2.get(puzzleId).add(transport);
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: true }, null, 2) }]
-          };
-        }
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
@@ -11677,14 +11700,10 @@ var createServer = (subscribers2, transportsBySessionId2) => {
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
-            const subscribedTransports = subscribers2.get(args.puzzleId) || /* @__PURE__ */ new Set();
-            for (const subTransport of subscribedTransports) {
-              console.log("Subscribed transport", subTransport);
-              await mcpServer2.notification({
-                method: "notifications/resources/updated",
-                params: { uri: `puzzlebox:/puzzle/${args.puzzleId}` }
-              });
-            }
+            await server2.notification({
+              method: "notifications/resources/updated",
+              params: { uri: `${PUZZLE_RESOURCE_PATH2}${args.puzzleId}` }
+            });
           }
           return {
             content: [
@@ -11707,56 +11726,82 @@ var createServer = (subscribers2, transportsBySessionId2) => {
       );
     }
   });
-  return { mcpServer: mcpServer2 };
+  server2.setRequestHandler(ListResourcesRequestSchema, async (request) => {
+    var _a, _b;
+    const PAGE_SIZE = 25;
+    const cursor = (_a = request.params) == null ? void 0 : _a.cursor;
+    let startIndex = 0;
+    if (cursor) {
+      const decodedCursor = parseInt(atob(cursor), 10);
+      if (!isNaN(decodedCursor)) {
+        startIndex = decodedCursor;
+      }
+    }
+    const puzzleCount = (_b = countPuzzles()) == null ? void 0 : _b.count;
+    const endIndex = Math.min(startIndex + PAGE_SIZE, puzzleCount);
+    const puzzles = getPuzzleList().puzzles;
+    let resources = puzzles.slice(startIndex, endIndex);
+    let nextCursor;
+    if (endIndex < puzzles.length) {
+      nextCursor = btoa(endIndex.toString());
+    }
+    return {
+      resources,
+      nextCursor
+    };
+  });
+  server2.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+    return {
+      resourceTemplates: [
+        {
+          uriTemplate: `${PUZZLE_RESOURCE_PATH2}{id}`,
+          name: "Puzzle Snapshot",
+          description: "The current state and available actions for the given puzzle id"
+        }
+      ]
+    };
+  });
+  server2.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    var _a;
+    const uri = request.params.uri;
+    if (uri.startsWith(PUZZLE_RESOURCE_PATH2)) {
+      console.log(`Received request: ${uri}`);
+      const puzzleId = uri.split(PUZZLE_RESOURCE_PATH2)[1];
+      const result = getPuzzleSnapshot(puzzleId);
+      console.log(result);
+      return {
+        contents: [{
+          uri,
+          name: `Puzzle ${puzzleId}`,
+          mimeType: "application/json",
+          text: `Current state: ${result.currentState}, Available actions: ${(_a = result == null ? void 0 : result.availableActions) == null ? void 0 : _a.join(", ")}`,
+          json: result
+        }]
+      };
+    }
+    throw new Error(`Unknown resource: ${uri}`);
+  });
+  return { server: server2 };
 };
 
 // src/index.ts
 var import_express = __toESM(require("express"), 1);
 var app = (0, import_express.default)();
 app.use(import_express.default.json());
-var transportsBySessionId = /* @__PURE__ */ new Map();
-var subscribers = /* @__PURE__ */ new Map();
-var { mcpServer } = createServer(subscribers, transportsBySessionId);
+var { server } = createServer();
+var transport;
 app.get("/sse", async (req, res) => {
-  console.log("------Received SSE connection-------");
-  console.log("Headers:", req.headers);
-  console.log("Query:", req.query);
-  console.log("Body:", req.body);
-  const transport = new SSEServerTransport("/message", res);
-  await mcpServer.connect(transport);
-  await transport.send({
-    jsonrpc: "2.0",
-    method: "ready",
-    params: {}
-  });
-  const sessionId = transport == null ? void 0 : transport._sessionId;
-  transportsBySessionId.set(sessionId, transport);
-  console.log("sessionId:", sessionId);
-  res.on("close", () => {
-    transportsBySessionId.delete(sessionId);
-    for (const [puzzleId, transports] of subscribers.entries()) {
-      transports.delete(transport);
-      if (transports.size === 0) {
-        subscribers.delete(puzzleId);
-      }
-    }
-  });
+  console.log("Received connection");
+  transport = new SSEServerTransport("/message", res);
+  await server.connect(transport);
+  server.onclose = async () => {
+    await server.close();
+    process.exit(0);
+  };
 });
 app.post("/message", async (req, res) => {
-  console.log("-------Received POST /message-------");
-  console.log("Headers:", req.headers);
-  console.log("Query:", req.query);
-  console.log("Body:", req.body);
-  const sessionId = req.query.sessionId;
-  if (!sessionId) {
-    return res.status(400).json({ error: "Missing sessionId in query" });
-  }
-  let transport = transportsBySessionId.get(sessionId);
-  if (transport) {
-    await transport.handlePostMessage(req, res, req.body);
-  } else {
-    return res.status(400).json({ error: "No transport available for session" });
-  }
+  console.log("Received message");
+  await transport.handlePostMessage(req, res, req.body);
 });
 var PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

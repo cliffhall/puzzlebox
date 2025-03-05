@@ -24,11 +24,6 @@ export const addPuzzleSchema = z.object({
   config: z.string(),
 });
 
-export const subscribeToPuzzleSchema = z.object({
-  puzzleId: z.string(),
-  sessionId: z.string(),
-});
-
 export const getPuzzleSnapshotSchema = z.object({
   puzzleId: z.string(),
 });
