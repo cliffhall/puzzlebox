@@ -11675,13 +11675,14 @@ var createServer = (subscribers2, transportsBySessionId2) => {
           const args = performActionOnPuzzleSchema.parse(
             request.params.arguments
           );
-          const success = await performAction(args.puzzleId, args.actionName);
-          if (success) {
+          const result = await performAction(args.puzzleId, args.actionName);
+          if (result.success) {
             const snapshot = getPuzzleSnapshot(args.puzzleId);
             const newState = snapshot.currentState;
             const subscribedTransports = subscribers2.get(args.puzzleId) || /* @__PURE__ */ new Set();
             for (const subTransport of subscribedTransports) {
-              subTransport.send({
+              console.log("Subscribed transport", subTransport);
+              await subTransport.send({
                 jsonrpc: "2.0",
                 method: "notifications/puzzle/state_changed",
                 params: { puzzleId: args.puzzleId, newState }
@@ -11690,7 +11691,7 @@ var createServer = (subscribers2, transportsBySessionId2) => {
           }
           return {
             content: [
-              { type: "text", text: JSON.stringify({ success }, null, 2) }
+              { type: "text", text: JSON.stringify(result, null, 2) }
             ]
           };
         }
