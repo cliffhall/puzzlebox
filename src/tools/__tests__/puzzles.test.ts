@@ -12,7 +12,7 @@ describe("addPuzzle", () => {
   });
 
   it("should return error if config is not valid", () => {
-    const testPuzzle:string = "Not a valid puzzle";
+    const testPuzzle: string = "Not a valid puzzle";
     const result = addPuzzle(testPuzzle);
     expect(result).not.toHaveProperty("puzzleId");
     expect(result).toHaveProperty("success");
@@ -22,7 +22,7 @@ describe("addPuzzle", () => {
   });
 
   it("should register a new puzzle with a unique ID", () => {
-    const testPuzzle:string = getTestPuzzleConfigString();
+    const testPuzzle: string = getTestPuzzleConfigString();
     const result = addPuzzle(testPuzzle);
     expect(result).toHaveProperty("puzzleId");
     expect(result).toHaveProperty("success");
@@ -40,7 +40,7 @@ describe("addPuzzle", () => {
 
   it("should get a snapshot of a puzzle by ID", () => {
     const testPuzzle = getTestPuzzleConfigString();
-    const result =  addPuzzle(testPuzzle);
+    const result = addPuzzle(testPuzzle);
     expect(result).toHaveProperty("puzzleId");
     const id = result.puzzleId || "";
     const snapshot = getPuzzleSnapshot(id);
@@ -48,12 +48,11 @@ describe("addPuzzle", () => {
     expect(snapshot).toHaveProperty("availableActions");
     expect(snapshot.currentState).toEqual("Closed");
     expect(snapshot.availableActions).toEqual(["Open", "Lock"]);
-
   });
 
   it("should perform an action on a puzzle", async () => {
     const testPuzzle = getTestPuzzleConfigString();
-    const result1 =  addPuzzle(testPuzzle);
+    const result1 = addPuzzle(testPuzzle);
     const id = result1.puzzleId || "";
     const ACTION_NAME = "Open";
     const result2 = await performAction(id, ACTION_NAME);
@@ -61,5 +60,4 @@ describe("addPuzzle", () => {
     const snapshot = getPuzzleSnapshot(id);
     expect(snapshot.currentState).toEqual("Opened");
   });
-
 });

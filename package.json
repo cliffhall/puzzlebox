@@ -7,7 +7,7 @@
     "inspector": "npx @modelcontextprotocol/inspector",
     "format": "prettier --write ./src",
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
-    "lint": "eslint .",
+    "lint": "eslint src",
     "lint:fix": "eslint ./src --fix",
     "test": "jest --coverage"
   },

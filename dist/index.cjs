@@ -9659,9 +9659,6 @@ data: ${JSON.stringify(message)}
   }
 };
 
-// src/index.ts
-var import_express = __toESM(require("express"), 1);
-
 // src/common/schemas.ts
 var noArgSchema = z.object({});
 var actionSchema = z.object({
@@ -9682,21 +9679,16 @@ var puzzleSchema = z.object({
 var addPuzzleSchema = z.object({
   config: z.string()
 });
+var subscribeToPuzzleSchema = z.object({
+  puzzleId: z.string(),
+  sessionId: z.string()
+});
 var getPuzzleSnapshotSchema = z.object({
   puzzleId: z.string()
 });
 var performActionOnPuzzleSchema = z.object({
   puzzleId: z.string(),
   actionName: z.string()
-});
-var invokeTransitionGuard = z.object({
-  prompt: z.string().describe("The prompt to send to the LLM"),
-  maxTokens: z.number().default(100).describe("Maximum number of tokens to generate")
-});
-var PuzzleStateChangedNotificationSchema = z.object({
-  method: z.literal("notifications/puzzle/state_changed"),
-  puzzleId: z.string(),
-  newState: z.string()
 });
 
 // node_modules/zod-to-json-schema/dist/esm/Options.js
@@ -10953,8 +10945,8 @@ var Protocol = class {
    *
    * The Protocol object assumes ownership of the Transport, replacing any callbacks that have already been set, and expects that it is the only user of the Transport instance going forward.
    */
-  async connect(transport2) {
-    this._transport = transport2;
+  async connect(transport) {
+    this._transport = transport;
     this._transport.onclose = () => {
       this._onclose();
     };
@@ -11596,7 +11588,7 @@ async function performAction(puzzleId, actionName) {
 }
 
 // src/puzzlebox.ts
-var createServer = () => {
+var createServer = (subscribers2, transportsBySessionId2) => {
   const mcpServer2 = new Server(
     {
       name: "puzzlebox",
@@ -11605,43 +11597,16 @@ var createServer = () => {
     {
       capabilities: {
         prompts: {},
-        resources: {},
+        resources: {
+          "puzzlebox:/puzzle/{id}": {
+            description: "A puzzle with the given ID"
+          }
+        },
         tools: {},
         logging: {}
       }
     }
   );
-  let subscriptions = /* @__PURE__ */ new Set();
-  let updateInterval;
-  updateInterval = setInterval(async () => {
-    for (const uri of subscriptions) {
-      await mcpServer2.notification({
-        method: "notifications/resources/updated",
-        params: { uri }
-      });
-    }
-  }, 5e3);
-  const requestSampling = async (context, uri, maxTokens = 100) => {
-    const request = {
-      method: "sampling/createMessage",
-      params: {
-        messages: [
-          {
-            role: "user",
-            content: {
-              type: "text",
-              text: `Resource ${uri} context: ${context}`
-            }
-          }
-        ],
-        systemPrompt: "You are a helpful assistant.",
-        maxTokens,
-        temperature: 0.7,
-        includeContext: "thisServer"
-      }
-    };
-    return await mcpServer2.request(request, CreateMessageResultSchema);
-  };
   mcpServer2.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -11661,6 +11626,11 @@ var createServer = () => {
           inputSchema: zodToJsonSchema(performActionOnPuzzleSchema)
         },
         {
+          name: "subscribe_to_puzzle",
+          description: "Subscribe to state changes of a puzzle.",
+          inputSchema: zodToJsonSchema(subscribeToPuzzleSchema)
+        },
+        {
           name: "count_puzzles",
           description: "Get the count of registered puzzles.",
           inputSchema: zodToJsonSchema(noArgSchema)
@@ -11671,6 +11641,22 @@ var createServer = () => {
   mcpServer2.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       switch (request.params.name) {
+        case "subscribe_to_puzzle": {
+          const args = subscribeToPuzzleSchema.parse(request.params.arguments);
+          const puzzleId = args.puzzleId;
+          const sessionId = args.sessionId;
+          const transport = transportsBySessionId2.get(sessionId);
+          if (!transport) {
+            throw new Error("No transport found for sessionId");
+          }
+          if (!subscribers2.has(puzzleId)) {
+            subscribers2.set(puzzleId, /* @__PURE__ */ new Set());
+          }
+          subscribers2.get(puzzleId).add(transport);
+          return {
+            content: [{ type: "text", text: JSON.stringify({ success: true }, null, 2) }]
+          };
+        }
         case "add_puzzle": {
           const args = addPuzzleSchema.parse(request.params.arguments);
           const result = addPuzzle(args.config);
@@ -11686,10 +11672,27 @@ var createServer = () => {
           };
         }
         case "perform_action_on_puzzle": {
-          const args = performActionOnPuzzleSchema.parse(request.params.arguments);
+          const args = performActionOnPuzzleSchema.parse(
+            request.params.arguments
+          );
           const result = await performAction(args.puzzleId, args.actionName);
+          if (result.success) {
+            const snapshot = getPuzzleSnapshot(args.puzzleId);
+            const newState = snapshot.currentState;
+            const subscribedTransports = subscribers2.get(args.puzzleId) || /* @__PURE__ */ new Set();
+            for (const subTransport of subscribedTransports) {
+              console.log("Subscribed transport", subTransport);
+              await subTransport.send({
+                jsonrpc: "2.0",
+                method: "notifications/puzzle/state_changed",
+                params: { puzzleId: args.puzzleId, newState }
+              });
+            }
+          }
           return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+            content: [
+              { type: "text", text: JSON.stringify(result, null, 2) }
+            ]
           };
         }
         case "count_puzzles": {
@@ -11707,35 +11710,56 @@ var createServer = () => {
       );
     }
   });
-  mcpServer2.setRequestHandler(SubscribeRequestSchema, async (request) => {
-    const { uri } = request.params;
-    subscriptions.add(uri);
-    await requestSampling("A new subscription was started", uri);
-    return {};
-  });
-  mcpServer2.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
-    subscriptions.delete(request.params.uri);
-    return {};
-  });
   return { mcpServer: mcpServer2 };
 };
 
 // src/index.ts
+var import_express = __toESM(require("express"), 1);
 var app = (0, import_express.default)();
-var { mcpServer } = createServer();
-var transport;
+app.use(import_express.default.json());
+var transportsBySessionId = /* @__PURE__ */ new Map();
+var subscribers = /* @__PURE__ */ new Map();
+var { mcpServer } = createServer(subscribers, transportsBySessionId);
 app.get("/sse", async (req, res) => {
-  console.log("Received connection");
-  transport = new SSEServerTransport("/message", res);
+  console.log("------Received SSE connection-------");
+  console.log("Headers:", req.headers);
+  console.log("Query:", req.query);
+  console.log("Body:", req.body);
+  const transport = new SSEServerTransport("/message", res);
   await mcpServer.connect(transport);
-  mcpServer.onclose = async () => {
-    await mcpServer.close();
-    process.exit(0);
-  };
+  await transport.send({
+    jsonrpc: "2.0",
+    method: "ready",
+    params: {}
+  });
+  const sessionId = transport == null ? void 0 : transport._sessionId;
+  transportsBySessionId.set(sessionId, transport);
+  console.log("sessionId:", sessionId);
+  res.on("close", () => {
+    transportsBySessionId.delete(sessionId);
+    for (const [puzzleId, transports] of subscribers.entries()) {
+      transports.delete(transport);
+      if (transports.size === 0) {
+        subscribers.delete(puzzleId);
+      }
+    }
+  });
 });
 app.post("/message", async (req, res) => {
-  console.log("Received message", req);
-  await transport.handlePostMessage(req, res);
+  console.log("-------Received POST /message-------");
+  console.log("Headers:", req.headers);
+  console.log("Query:", req.query);
+  console.log("Body:", req.body);
+  const sessionId = req.query.sessionId;
+  if (!sessionId) {
+    return res.status(400).json({ error: "Missing sessionId in query" });
+  }
+  let transport = transportsBySessionId.get(sessionId);
+  if (transport) {
+    await transport.handlePostMessage(req, res, req.body);
+  } else {
+    return res.status(400).json({ error: "No transport available for session" });
+  }
 });
 var PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

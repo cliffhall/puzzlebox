@@ -1,6 +1,4 @@
 import { z } from "zod";
-// @ts-ignore
-import { NotificationSchema } from "@modelcontextprotocol/sdk/dist/cjs/types.js";
 
 export const noArgSchema = z.object({});
 
@@ -26,8 +24,13 @@ export const addPuzzleSchema = z.object({
   config: z.string(),
 });
 
+export const subscribeToPuzzleSchema = z.object({
+  puzzleId: z.string(),
+  sessionId: z.string(),
+});
+
 export const getPuzzleSnapshotSchema = z.object({
-  puzzleId: z.string()
+  puzzleId: z.string(),
 });
 
 export const performActionOnPuzzleSchema = z.object({
@@ -35,6 +38,7 @@ export const performActionOnPuzzleSchema = z.object({
   actionName: z.string(),
 });
 
+/*
 export const invokeTransitionGuard = z.object({
   prompt: z.string().describe("The prompt to send to the LLM"),
   maxTokens: z
@@ -48,3 +52,4 @@ export const PuzzleStateChangedNotificationSchema = z.object({
   puzzleId: z.string(),
   newState: z.string(),
 });
+*/

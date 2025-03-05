@@ -19,7 +19,7 @@ class PuzzleStore {
    * Update a puzzle
    * @param puzzle
    */
-  static updatePuzzle(puzzle:Puzzle): boolean {
+  static updatePuzzle(puzzle: Puzzle): boolean {
     let success = false;
     if (this.puzzles.has(puzzle.id)) {
       this.puzzles.set(puzzle.id, puzzle);

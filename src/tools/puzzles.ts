@@ -2,7 +2,6 @@ import PuzzleStore from "../stores/PuzzleStore.ts";
 import { puzzleSchema } from "../common/schemas.ts";
 import { ActionName, StateName } from "../common/types.js";
 
-
 interface AddPuzzleResponse {
   success: boolean;
   error?: string;
@@ -22,13 +21,11 @@ interface PerformActionOnPuzzlesResponse {
   success: boolean;
 }
 
-
-
 /**
  * Add a puzzle to the puzzle box
  */
 export function addPuzzle(puzzleConfig: string): AddPuzzleResponse {
-  let response: AddPuzzleResponse = { success: false};
+  let response: AddPuzzleResponse = { success: false };
   let parsed;
   try {
     parsed = JSON.parse(puzzleConfig);
@@ -39,7 +36,8 @@ export function addPuzzle(puzzleConfig: string): AddPuzzleResponse {
     }
   } catch (error) {
     response.success = false;
-    response.error = error instanceof Error ? error.message : 'Unknown error occurred'
+    response.error =
+      error instanceof Error ? error.message : "Unknown error occurred";
   }
   return response;
 }
@@ -52,21 +50,20 @@ export function addPuzzle(puzzleConfig: string): AddPuzzleResponse {
  * @param puzzleId
  */
 export function getPuzzleSnapshot(puzzleId: string): GetPuzzleSnapshotResponse {
-
   let currentState, availableActions;
   const puzzle = PuzzleStore.getPuzzle(puzzleId);
   if (!!puzzle && !!puzzle?.getCurrentState()) {
-    const cs= puzzle?.getCurrentState();
+    const cs = puzzle?.getCurrentState();
     if (cs && cs.name) {
-        currentState = cs.name;
-        availableActions = puzzle.getActions(currentState);
-      }
+      currentState = cs.name;
+      availableActions = puzzle.getActions(currentState);
+    }
   }
 
-  return  {
+  return {
     currentState,
-    availableActions
-  }
+    availableActions,
+  };
 }
 
 /**
@@ -83,7 +80,10 @@ export function countPuzzles(): CountPuzzlesResponse {
  * @param puzzleId
  * @param actionName
  */
-export async function performAction(puzzleId:string, actionName:ActionName): Promise<PerformActionOnPuzzlesResponse> {
+export async function performAction(
+  puzzleId: string,
+  actionName: ActionName,
+): Promise<PerformActionOnPuzzlesResponse> {
   let success = false;
   const snapshot = getPuzzleSnapshot(puzzleId);
   if (snapshot && snapshot.availableActions?.includes(actionName)) {
@@ -94,5 +94,5 @@ export async function performAction(puzzleId:string, actionName:ActionName): Pro
     }
   }
 
-  return {success};
+  return { success };
 }
