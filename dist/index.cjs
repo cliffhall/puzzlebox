@@ -11677,15 +11677,12 @@ var createServer = (subscribers2, transportsBySessionId2) => {
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
-            const snapshot = getPuzzleSnapshot(args.puzzleId);
-            const newState = snapshot.currentState;
             const subscribedTransports = subscribers2.get(args.puzzleId) || /* @__PURE__ */ new Set();
             for (const subTransport of subscribedTransports) {
               console.log("Subscribed transport", subTransport);
-              await subTransport.send({
-                jsonrpc: "2.0",
-                method: "notifications/puzzle/state_changed",
-                params: { puzzleId: args.puzzleId, newState }
+              await mcpServer2.notification({
+                method: "notifications/resources/updated",
+                params: { uri: `puzzlebox:/puzzle/${args.puzzleId}` }
               });
             }
           }
