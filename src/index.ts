@@ -14,10 +14,6 @@ app.get("/sse", async (req, res) => {
   transport = new SSEServerTransport("/message", res);
   await server.connect(transport);
 
-  server.onclose = async () => {
-    await server.close();
-    process.exit(0);
-  };
 });
 
 app.post("/message", async (req, res) => {
