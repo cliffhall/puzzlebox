@@ -113,7 +113,7 @@ These screenshots show the various MCP tools and resources implemented by the se
 7. If guards pass, the state transition completes.
 8. Clients update their UI based on the new state.
 9. Clients can subscribe to a given puzzle to receive updates when its state changes.
-10. If the client receives a resource updated notification, they can either read the resource or use the `get_puzzle_snapshot` tool to get the current state and avaialb actions
+10. If the client receives a resource updated notification, they can either read the resource or use the `get_puzzle_snapshot` tool to get the current state and available actions.
 
 ## MCP Tools
 
