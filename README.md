@@ -99,7 +99,7 @@ These screenshots show the various MCP tools and resources implemented by the se
 ### 10 - Subscribed Resource
 ![10. unsubscribed resource](images/10_subscribed_resource.png)
 
-### 11 - Subscribed Resource Updated Notification
+### 11 - Resource Updated Notification
 ![11. subscribed resource updated](images/11_resource_updated.png)
 
 
