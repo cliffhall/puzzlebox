@@ -1,6 +1,6 @@
 {
-  "name": "p",
-  "version": "0.3.0",
+  "name": "puzzlebox",
+  "version": "1.0.0",
   "scripts": {
     "build": "node esbuild.config.cjs",
     "start": "node dist/index.cjs",
