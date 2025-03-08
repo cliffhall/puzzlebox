@@ -4,8 +4,8 @@ import {
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
- /* SubscribeRequestSchema,
-  UnsubscribeRequestSchema*/
+  SubscribeRequestSchema,
+  UnsubscribeRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   noArgSchema,
@@ -14,7 +14,6 @@ import {
   performActionOnPuzzleSchema,
 } from "./common/schemas.ts";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   addPuzzle,
   countPuzzles,
@@ -22,14 +21,11 @@ import {
   performAction,
   getPuzzleList
 } from "./tools/puzzles.ts";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {PUZZLE_RESOURCE_PATH, getPuzzleResourceUri} from "./common/utils.js";
 
-/*
-const PAGE_SIZE = 50; // for paginated list resource requests
-*/
-const PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";
-
-/*let subscriptions: Set<string> = new Set();*/
 export const createServer = () => {
+
   const server = new Server(
     {
       name: "puzzlebox",
@@ -44,6 +40,8 @@ export const createServer = () => {
       },
     },
   );
+
+  let subscriptions: Set<string> = new Set();
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -98,10 +96,8 @@ export const createServer = () => {
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
-            await server.notification({
-              method: "notifications/resources/updated",
-              params: { uri: `${PUZZLE_RESOURCE_PATH}${args.puzzleId}` },
-            });
+            const uri = getPuzzleResourceUri(args.puzzleId);
+            if (subscriptions.has(uri)) await server.sendResourceUpdated({ uri });
           }
           return {
             content: [
@@ -172,7 +168,7 @@ export const createServer = () => {
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const uri = request.params.uri;
     if (uri.startsWith(PUZZLE_RESOURCE_PATH)) {
-      console.log(`Received request: ${uri}`);
+      console.log(`Received resource request: ${uri}`);
       const puzzleId = uri.split(PUZZLE_RESOURCE_PATH)[1];
       const result = getPuzzleSnapshot(puzzleId);
       console.log(result);
@@ -189,23 +185,18 @@ export const createServer = () => {
 
     throw new Error(`Unknown resource: ${uri}`);
   });
-/*
 
   server.setRequestHandler(SubscribeRequestSchema, async (request) => {
     const { uri } = request.params;
     subscriptions.add(uri);
-
-    // Request sampling from client when someone subscribes
-    await requestSampling("A new subscription was started", uri);
     return {};
   });
 
   server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
-    subscriptions.delete(request.params.uri);
+    const { uri } = request.params;
+    subscriptions.delete(uri);
     return {};
   });
-*/
-
 
   return { server };
 };

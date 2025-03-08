@@ -1,7 +1,7 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
 import { puzzleSchema } from "../common/schemas.ts";
 import { ActionName, StateName } from "../common/types.ts";
-import { PUZZLE_RESOURCE_PATH } from "../common/utils.ts";
+import { getPuzzleResourceUri } from "../common/utils.ts";
 
 interface AddPuzzleResponse {
   success: boolean;
@@ -90,7 +90,7 @@ export function getPuzzleList(): GetPuzzleListResponse {
   return {
     puzzles: PuzzleStore.getPuzzleList().map((puzzleId) => {
       return {
-        uri: `${PUZZLE_RESOURCE_PATH}${puzzleId}`,
+        uri: getPuzzleResourceUri(puzzleId),
         name: puzzleId,
         mimeType: "text/plain",
       }

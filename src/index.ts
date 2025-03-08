@@ -10,14 +10,16 @@ const { server } = createServer();
 let transport: SSEServerTransport;
 
 app.get("/sse", async (req, res) => {
-  console.log("Received connection");
   transport = new SSEServerTransport("/message", res);
+  console.log("Client connected", transport?.['_sessionId']);
   await server.connect(transport);
-
+  server.onclose = async () => {
+    console.log("Client Disconnected", transport?.['_sessionId']);
+  };
 });
 
 app.post("/message", async (req, res) => {
-  console.log("Received message");
+  console.log("Client Message", transport?.['_sessionId']);
   await transport.handlePostMessage(req, res, req.body);
 });
 

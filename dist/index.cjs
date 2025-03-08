@@ -10913,6 +10913,236 @@ var zodToJsonSchema = (schema, options) => {
   return combined;
 };
 
+// src/common/Puzzle.ts
+var Puzzle = class {
+  id;
+  states = /* @__PURE__ */ new Map();
+  initialState = void 0;
+  currentState = void 0;
+  constructor(id, puzzleConfig = void 0) {
+    this.id = id;
+    if (puzzleConfig) this.initialState = this.initializePuzzle(puzzleConfig);
+  }
+  /**
+   * Initialize the puzzle with a puzzle configuration
+   * @param puzzleConfig
+   * @returns StateName
+   */
+  initializePuzzle(puzzleConfig) {
+    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
+    if (parsedPuzzle.success) {
+      const config = parsedPuzzle.data;
+      for (const [name, value] of Object.entries(config.states)) {
+        const state = value;
+        this.addState(state, name === config.initialState);
+      }
+      return config.initialState;
+    } else {
+      console.log("error");
+    }
+  }
+  /**
+   * Add a new state to the puzzle
+   * @param state
+   * @param isInitial
+   */
+  addState(state, isInitial = false) {
+    const actions = state == null ? void 0 : state.actions;
+    state.actions = /* @__PURE__ */ new Map();
+    if (actions) {
+      for (const [name, value] of Object.entries(actions)) {
+        state.actions.set(name, value);
+      }
+    }
+    this.states.set(state.name, state);
+    if (isInitial) this.currentState = this.initialState = state.name;
+  }
+  /**
+   * Add a new action to a state
+   * @param stateName
+   * @param action
+   */
+  addAction(stateName, action) {
+    let success = false;
+    const state = this.states.get(stateName);
+    if (state) {
+      if (!(state == null ? void 0 : state.actions)) state.actions = /* @__PURE__ */ new Map();
+      state.actions.set(action.name, action);
+      success = true;
+    }
+    return success;
+  }
+  /**
+   * Get the list of actions for a given state
+   * @param stateName
+   * @returns ActionName[]
+   */
+  getActions(stateName) {
+    let result = [];
+    const state = this.states.get(stateName);
+    if (state && state.actions) {
+      result = Array.from(state.actions.keys());
+    }
+    return result;
+  }
+  /**
+   * Get a state by name
+   * @param stateName
+   */
+  getState(stateName) {
+    return this.states.get(stateName);
+  }
+  /**
+   * Get the current state
+   */
+  getCurrentState() {
+    return this.currentState === void 0 ? this.initialState === void 0 ? void 0 : this.states.get(this.initialState) : this.states.get(this.currentState);
+  }
+  /**
+   * Perform the state transition associated with the given action name
+   * - only works if actionName is valid for currentState
+   * - can be canceled by exit guard of current state
+   * - can be canceled by enter guard of target state
+   * @param actionName
+   * @returns boolean
+   */
+  async performAction(actionName) {
+    var _a, _b, _c;
+    let success = false;
+    const currentState = this.getCurrentState();
+    if ((_a = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _a.has(actionName)) {
+      this.currentState = (_c = (_b = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _b.get(actionName)) == null ? void 0 : _c.targetState;
+      success = true;
+    }
+    return success;
+  }
+};
+
+// src/common/utils.ts
+function createId(prefix) {
+  return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
+}
+var PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";
+function getPuzzleResourceUri(puzzleId) {
+  return `${PUZZLE_RESOURCE_PATH}${puzzleId}`;
+}
+
+// src/stores/PuzzleStore.ts
+var PuzzleStore = class _PuzzleStore {
+  // Singleton Puzzle Store
+  static puzzles = /* @__PURE__ */ new Map();
+  /**
+   * Add a puzzle
+   */
+  static addPuzzle(puzzleConfig) {
+    const puzzleId = createId("puzzle");
+    const puzzle = new Puzzle(puzzleId, puzzleConfig);
+    this.puzzles.set(puzzle.id, puzzle);
+    return puzzle;
+  }
+  /**
+   * Update a puzzle
+   * @param puzzle
+   */
+  static updatePuzzle(puzzle) {
+    let success = false;
+    if (this.puzzles.has(puzzle.id)) {
+      this.puzzles.set(puzzle.id, puzzle);
+      success = true;
+    }
+    return success;
+  }
+  /**
+   * Get a puzzle by ID
+   * @param puzzleId
+   */
+  static getPuzzle(puzzleId) {
+    return this.puzzles.get(puzzleId);
+  }
+  /**
+   * Get a list of registered puzzle ids
+   */
+  static getPuzzleList() {
+    return Array.from(this.puzzles.keys());
+  }
+  /**
+   * Clear all puzzles
+   */
+  static clearPuzzles() {
+    _PuzzleStore.puzzles = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Get a count of all puzzles
+   * @returns number
+   */
+  static countPuzzles() {
+    return _PuzzleStore.puzzles.size;
+  }
+};
+var PuzzleStore_default = PuzzleStore;
+
+// src/tools/puzzles.ts
+function addPuzzle(puzzleConfig) {
+  let response = { success: false };
+  let parsed;
+  try {
+    parsed = JSON.parse(puzzleConfig);
+    const config = puzzleSchema.safeParse(parsed);
+    if (config.success) {
+      response.success = true;
+      response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
+    }
+  } catch (error) {
+    response.success = false;
+    response.error = error instanceof Error ? error.message : "Unknown error occurred";
+  }
+  return response;
+}
+function getPuzzleSnapshot(puzzleId) {
+  let currentState, availableActions;
+  const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
+  if (!!puzzle && !!(puzzle == null ? void 0 : puzzle.getCurrentState())) {
+    const cs = puzzle == null ? void 0 : puzzle.getCurrentState();
+    if (cs && cs.name) {
+      currentState = cs.name;
+      availableActions = puzzle.getActions(currentState);
+    }
+  }
+  return {
+    currentState,
+    availableActions
+  };
+}
+function countPuzzles() {
+  return {
+    count: PuzzleStore_default.countPuzzles()
+  };
+}
+function getPuzzleList() {
+  return {
+    puzzles: PuzzleStore_default.getPuzzleList().map((puzzleId) => {
+      return {
+        uri: getPuzzleResourceUri(puzzleId),
+        name: puzzleId,
+        mimeType: "text/plain"
+      };
+    })
+  };
+}
+async function performAction(puzzleId, actionName) {
+  var _a;
+  let success = false;
+  const snapshot = getPuzzleSnapshot(puzzleId);
+  if (snapshot && ((_a = snapshot.availableActions) == null ? void 0 : _a.includes(actionName))) {
+    const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
+    if (puzzle) {
+      success = await (puzzle == null ? void 0 : puzzle.performAction(actionName));
+      if (success) success = PuzzleStore_default.updatePuzzle(puzzle);
+    }
+  }
+  return { success };
+}
+
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 var DEFAULT_REQUEST_TIMEOUT_MSEC = 6e4;
 var Protocol = class {
@@ -11407,235 +11637,7 @@ var Server = class extends Protocol {
   }
 };
 
-// src/common/Puzzle.ts
-var Puzzle = class {
-  id;
-  states = /* @__PURE__ */ new Map();
-  initialState = void 0;
-  currentState = void 0;
-  constructor(id, puzzleConfig = void 0) {
-    this.id = id;
-    if (puzzleConfig) this.initialState = this.initializePuzzle(puzzleConfig);
-  }
-  /**
-   * Initialize the puzzle with a puzzle configuration
-   * @param puzzleConfig
-   * @returns StateName
-   */
-  initializePuzzle(puzzleConfig) {
-    const parsedPuzzle = puzzleSchema.safeParse(puzzleConfig);
-    if (parsedPuzzle.success) {
-      const config = parsedPuzzle.data;
-      for (const [name, value] of Object.entries(config.states)) {
-        const state = value;
-        this.addState(state, name === config.initialState);
-      }
-      return config.initialState;
-    } else {
-      console.log("error");
-    }
-  }
-  /**
-   * Add a new state to the puzzle
-   * @param state
-   * @param isInitial
-   */
-  addState(state, isInitial = false) {
-    const actions = state == null ? void 0 : state.actions;
-    state.actions = /* @__PURE__ */ new Map();
-    if (actions) {
-      for (const [name, value] of Object.entries(actions)) {
-        state.actions.set(name, value);
-      }
-    }
-    this.states.set(state.name, state);
-    if (isInitial) this.currentState = this.initialState = state.name;
-  }
-  /**
-   * Add a new action to a state
-   * @param stateName
-   * @param action
-   */
-  addAction(stateName, action) {
-    let success = false;
-    const state = this.states.get(stateName);
-    if (state) {
-      if (!(state == null ? void 0 : state.actions)) state.actions = /* @__PURE__ */ new Map();
-      state.actions.set(action.name, action);
-      success = true;
-    }
-    return success;
-  }
-  /**
-   * Get the list of actions for a given state
-   * @param stateName
-   * @returns ActionName[]
-   */
-  getActions(stateName) {
-    let result = [];
-    const state = this.states.get(stateName);
-    if (state && state.actions) {
-      result = Array.from(state.actions.keys());
-    }
-    return result;
-  }
-  /**
-   * Get a state by name
-   * @param stateName
-   */
-  getState(stateName) {
-    return this.states.get(stateName);
-  }
-  /**
-   * Get the current state
-   */
-  getCurrentState() {
-    return this.currentState === void 0 ? this.initialState === void 0 ? void 0 : this.states.get(this.initialState) : this.states.get(this.currentState);
-  }
-  /**
-   * Perform the state transition associated with the given action name
-   * - only works if actionName is valid for currentState
-   * - can be canceled by exit guard of current state
-   * - can be canceled by enter guard of target state
-   * @param actionName
-   * @returns boolean
-   */
-  async performAction(actionName) {
-    var _a, _b, _c;
-    let success = false;
-    const currentState = this.getCurrentState();
-    if ((_a = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _a.has(actionName)) {
-      this.currentState = (_c = (_b = currentState == null ? void 0 : currentState.actions) == null ? void 0 : _b.get(actionName)) == null ? void 0 : _c.targetState;
-      success = true;
-    }
-    return success;
-  }
-};
-
-// src/common/utils.ts
-function createId(prefix) {
-  return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
-}
-var PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";
-
-// src/stores/PuzzleStore.ts
-var PuzzleStore = class _PuzzleStore {
-  // Singleton Puzzle Store
-  static puzzles = /* @__PURE__ */ new Map();
-  /**
-   * Add a puzzle
-   */
-  static addPuzzle(puzzleConfig) {
-    const puzzleId = createId("puzzle");
-    const puzzle = new Puzzle(puzzleId, puzzleConfig);
-    this.puzzles.set(puzzle.id, puzzle);
-    return puzzle;
-  }
-  /**
-   * Update a puzzle
-   * @param puzzle
-   */
-  static updatePuzzle(puzzle) {
-    let success = false;
-    if (this.puzzles.has(puzzle.id)) {
-      this.puzzles.set(puzzle.id, puzzle);
-      success = true;
-    }
-    return success;
-  }
-  /**
-   * Get a puzzle by ID
-   * @param puzzleId
-   */
-  static getPuzzle(puzzleId) {
-    return this.puzzles.get(puzzleId);
-  }
-  /**
-   * Get a list of registered puzzle ids
-   */
-  static getPuzzleList() {
-    return Array.from(this.puzzles.keys());
-  }
-  /**
-   * Clear all puzzles
-   */
-  static clearPuzzles() {
-    _PuzzleStore.puzzles = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Get a count of all puzzles
-   * @returns number
-   */
-  static countPuzzles() {
-    return _PuzzleStore.puzzles.size;
-  }
-};
-var PuzzleStore_default = PuzzleStore;
-
-// src/tools/puzzles.ts
-function addPuzzle(puzzleConfig) {
-  let response = { success: false };
-  let parsed;
-  try {
-    parsed = JSON.parse(puzzleConfig);
-    const config = puzzleSchema.safeParse(parsed);
-    if (config.success) {
-      response.success = true;
-      response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
-    }
-  } catch (error) {
-    response.success = false;
-    response.error = error instanceof Error ? error.message : "Unknown error occurred";
-  }
-  return response;
-}
-function getPuzzleSnapshot(puzzleId) {
-  let currentState, availableActions;
-  const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
-  if (!!puzzle && !!(puzzle == null ? void 0 : puzzle.getCurrentState())) {
-    const cs = puzzle == null ? void 0 : puzzle.getCurrentState();
-    if (cs && cs.name) {
-      currentState = cs.name;
-      availableActions = puzzle.getActions(currentState);
-    }
-  }
-  return {
-    currentState,
-    availableActions
-  };
-}
-function countPuzzles() {
-  return {
-    count: PuzzleStore_default.countPuzzles()
-  };
-}
-function getPuzzleList() {
-  return {
-    puzzles: PuzzleStore_default.getPuzzleList().map((puzzleId) => {
-      return {
-        uri: `${PUZZLE_RESOURCE_PATH}${puzzleId}`,
-        name: puzzleId,
-        mimeType: "text/plain"
-      };
-    })
-  };
-}
-async function performAction(puzzleId, actionName) {
-  var _a;
-  let success = false;
-  const snapshot = getPuzzleSnapshot(puzzleId);
-  if (snapshot && ((_a = snapshot.availableActions) == null ? void 0 : _a.includes(actionName))) {
-    const puzzle = PuzzleStore_default.getPuzzle(puzzleId);
-    if (puzzle) {
-      success = await (puzzle == null ? void 0 : puzzle.performAction(actionName));
-      if (success) success = PuzzleStore_default.updatePuzzle(puzzle);
-    }
-  }
-  return { success };
-}
-
 // src/puzzlebox.ts
-var PUZZLE_RESOURCE_PATH2 = "puzzlebox://puzzle/";
 var createServer = () => {
   const server2 = new Server(
     {
@@ -11651,6 +11653,7 @@ var createServer = () => {
       }
     }
   );
+  let subscriptions = /* @__PURE__ */ new Set();
   server2.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -11700,10 +11703,8 @@ var createServer = () => {
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
-            await server2.notification({
-              method: "notifications/resources/updated",
-              params: { uri: `${PUZZLE_RESOURCE_PATH2}${args.puzzleId}` }
-            });
+            const uri = getPuzzleResourceUri(args.puzzleId);
+            if (subscriptions.has(uri)) await server2.sendResourceUpdated({ uri });
           }
           return {
             content: [
@@ -11754,7 +11755,7 @@ var createServer = () => {
     return {
       resourceTemplates: [
         {
-          uriTemplate: `${PUZZLE_RESOURCE_PATH2}{id}`,
+          uriTemplate: `${PUZZLE_RESOURCE_PATH}{id}`,
           name: "Puzzle Snapshot",
           description: "The current state and available actions for the given puzzle id"
         }
@@ -11764,9 +11765,9 @@ var createServer = () => {
   server2.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     var _a;
     const uri = request.params.uri;
-    if (uri.startsWith(PUZZLE_RESOURCE_PATH2)) {
-      console.log(`Received request: ${uri}`);
-      const puzzleId = uri.split(PUZZLE_RESOURCE_PATH2)[1];
+    if (uri.startsWith(PUZZLE_RESOURCE_PATH)) {
+      console.log(`Received resource request: ${uri}`);
+      const puzzleId = uri.split(PUZZLE_RESOURCE_PATH)[1];
       const result = getPuzzleSnapshot(puzzleId);
       console.log(result);
       return {
@@ -11781,6 +11782,16 @@ var createServer = () => {
     }
     throw new Error(`Unknown resource: ${uri}`);
   });
+  server2.setRequestHandler(SubscribeRequestSchema, async (request) => {
+    const { uri } = request.params;
+    subscriptions.add(uri);
+    return {};
+  });
+  server2.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+    const { uri } = request.params;
+    subscriptions.delete(uri);
+    return {};
+  });
   return { server: server2 };
 };
 
@@ -11791,12 +11802,15 @@ app.use(import_express.default.json());
 var { server } = createServer();
 var transport;
 app.get("/sse", async (req, res) => {
-  console.log("Received connection");
   transport = new SSEServerTransport("/message", res);
+  console.log("Client connected", transport == null ? void 0 : transport["_sessionId"]);
   await server.connect(transport);
+  server.onclose = async () => {
+    console.log("Client Disconnected", transport == null ? void 0 : transport["_sessionId"]);
+  };
 });
 app.post("/message", async (req, res) => {
-  console.log("Received message");
+  console.log("Client Message", transport == null ? void 0 : transport["_sessionId"]);
   await transport.handlePostMessage(req, res, req.body);
 });
 var PORT = process.env.PORT || 3001;

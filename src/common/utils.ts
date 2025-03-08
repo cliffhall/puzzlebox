@@ -42,3 +42,6 @@ export function getTestPuzzleConfigObject(): object {
 }
 
 export const PUZZLE_RESOURCE_PATH = "puzzlebox://puzzle/";
+export function getPuzzleResourceUri(puzzleId: string): string {
+  return `${PUZZLE_RESOURCE_PATH}${puzzleId}`;
+}
