@@ -15,8 +15,6 @@ A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write,
 
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to move between them, you make twists on the planes of the cube. 
 
-An even more challenging puzzle is how create a non-trivial thing with AI agents, as that thing becomes more complex.
-
 ### Properties of a Puzzle
 - A finite number of discrete states, e.g., "Inception", "Specification", "DomainModeling", "Design", "Build", etc.
 - Each state may have any number of actions (including 0) that initiate transition to another state.
