@@ -6,13 +6,32 @@
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts state machines as dynamic resources that clients can subscribe to and be updated when their state changes.
 
 ## What problem does puzzlebox address?
-Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them.
+Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them. 
+
+Just as a few agents can collaborate to complete a small project, several teams of process-aware agents need to operate within distinct project phases to tackle long horizon efforts.
+
+Consider enterprise-level software development processes:
 
 * A large software project typically moves through a multi-step, occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. 
 
 * Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 
-* With puzzlebox, members of agentic teams can change and be updated about changes to the state and available actions of a shared state machine representing their group's focus.
+With puzzlebox, members of agentic teams can be made process-aware.
+
+### Example: Teams passing the torch
+
+Three agents are working. The current state of their shared puzzle is "Specification". 
+* Agent 1 is specifying the domain language.
+* Agent 2 is defining project scope.
+* Agent 3 is producing the specification document.
+* The agents collaborate to reach the final specification document.
+* Once the spec is done, Agent 3 initiates a change to "Design" state.
+  * First, the spec is checked by an exit guard (i.e., LLM sampling) for completeness. 
+    * If problems are found, the state change is canceled and the team continues.
+    * If acceptable, the state changes to "Design". 
+      * The "Specification" agents are monitoring the puzzle and should clock out now. 
+        * Their long (and expensive) contexts have been distilled into the specification.
+        * The "Design" team picks from here, with the spec as a resource and their contexts fresh and role-specific.
 
 ## What is a puzzle?
 A Puzzle in puzzlebox is a [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine). It's just easier to say, write, and think about.
@@ -20,7 +39,7 @@ A Puzzle in puzzlebox is a [finite state machine](https://en.wikipedia.org/wiki/
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
 ### Properties of a puzzle
-- A finite number of discrete states, e.g., "Inception", "Specification", "DomainModeling", "Design", "Build", etc.
+- A finite number of discrete states, e.g., "Series Concept and Tone", "World Building", "Arc Plotting", "Episode Planning", "Plotline Blending", "Script Writing" etc.
 - Each state may have any number of actions (including 0) that initiate transition to another state.
 - There is an initial state.
 - There is a current state that may differ after actions have been performed on the puzzle.
