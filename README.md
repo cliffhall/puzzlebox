@@ -1,6 +1,8 @@
-
-![puzzlebox](images/puzzlebox.png)
 # puzzlebox
+![puzzlebox](images/puzzlebox.png)
+
+## Coordinating agents with state machines 
+
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts state machines as dynamic resources that clients can subscribe to and be updated when their state changes.
 
 ## What problem does puzzlebox address?
