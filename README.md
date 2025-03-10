@@ -10,7 +10,7 @@ Marshalling multiple agents toward a big goal is tougher than just breaking down
 
 * Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 
-* With puzzlebox, members of agentic teams can change and be updated about changes to the state and available actions of a common state machines representing their group's focus.
+* With puzzlebox, members of agentic teams can change and be updated about changes to the state and available actions of a shared state machine representing their group's focus.
 
 ## What is a Puzzle?
 A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write, and think about.
