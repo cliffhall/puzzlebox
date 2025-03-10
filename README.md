@@ -1,7 +1,7 @@
 
 ![puzzlebox](images/puzzlebox.png)
 # puzzlebox
-An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts dynamically configurable state machines for managing agent and team process state.  
+An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main)  that hosts finite state machines as dynamic resources that clients can subscribe to and be updated when their state changes.
 
 ## What problem does puzzlebox address?
 Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them.
