@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="white" rx="15" ry="15"/>
+  <rect x="60" y="60" width="180" height="180" fill="white" stroke="black" stroke-width="8" rx="10" ry="10"/>
+  <path d="M150 60 Q160 45, 170 60" fill="white" stroke="black" stroke-width="8"/>
+  <path d="M150 240 Q160 255, 170 240" fill="white" stroke="black" stroke-width="8"/>
+  <path d="M60 150 Q45 160, 60 170" fill="white" stroke="black" stroke-width="8"/>
+  <path d="M240 150 Q255 160, 240 170" fill="white" stroke="black" stroke-width="8"/>
+  <circle cx="110" cy="110" r="20" fill="white" stroke="black" stroke-width="4"/>
+  <circle cx="190" cy="110" r="20" fill="white" stroke="black" stroke-width="4"/>
+  <circle cx="110" cy="190" r="20" fill="white" stroke="black" stroke-width="4"/>
+  <circle cx="190" cy="190" r="20" fill="white" stroke="black" stroke-width="4"/>
+  <line x1="139.543" y1="110" x2="169.94" y2="110" stroke="black" stroke-width="3" style=""/>
+  <line x1="190" y1="141.843" x2="190" y2="169.946" stroke="black" stroke-width="3" style=""/>
+  <line x1="169.824" y1="189.694" x2="140.948" y2="189.694" stroke="black" stroke-width="3" style=""/>
+  <line x1="110" y1="159" x2="110" y2="131.337" stroke="black" stroke-width="3" style=""/>
+  <polygon points="132 110 142 106 142 114" fill="black"/>
+  <polygon points="190 132 194 142 186 142" fill="black"/>
+  <polygon points="142 190 132 194 132 186" fill="black" style="transform-box: fill-box; transform-origin: 50% 50%;" transform="matrix(-1, 0, 0, -1, -0.000007, -0.000011)"/>
+  <polygon points="110 168 106 158 114 158" fill="black"/>
+  <circle cx="149.998" cy="149.998" r="15" fill="black" style="transform-box: fill-box; transform-origin: 50% 50%;"/>
+  <circle cx="150" cy="150" r="7" fill="white"/>
+  <g transform="matrix(0, -1, 1, 0, 37.490231, -0.621727)" style="transform-origin: 131.471px 168.589px;">
+    <line x1="140.175" y1="159.603" x2="129.952" y2="170.307" stroke="black" stroke-width="2" style=""/>
+    <polygon points="129.13 176.212 125.13 166.212 133.13 166.212" fill="black" style="transform-box: fill-box; transform-origin: 50% 50%;" transform="matrix(0.707107, 0.707107, -0.707107, 0.707107, 0.000002, 0.000003)"/>
+  </g>
+</svg>

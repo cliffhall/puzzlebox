@@ -1,3 +1,5 @@
+
+![puzzlebox](images/puzzlebox.png)
 # puzzlebox
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts dynamically configurable [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) for managing agent and team process state.  
 
