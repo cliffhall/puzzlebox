@@ -18,16 +18,16 @@ Consider enterprise-level software development processes:
 
 With puzzlebox, members of agentic teams can be made process-aware.
 
-### Example: Teams passing the torch
+### Scenario: Teams passing the torch
 
 Three agents are working. The current state of their shared puzzle is "Specification". 
 * Agent 1 is specifying the domain language.
 * Agent 2 is defining project scope.
 * Agent 3 is producing the specification document.
 * The agents collaborate to reach the final specification document.
-* Once the spec is done, Agent 3 initiates a change to "Design" state.
+* Once the spec is done, Agent 3 initiates a transition to "Design" state.
   * First, the spec is checked by an exit guard (i.e., LLM sampling) for completeness. 
-    * If problems are found, the state change is canceled and the team continues.
+    * If problems are found, the state transition is canceled and the team continues.
     * If acceptable, the state changes to "Design". 
       * The "Specification" agents are monitoring the puzzle and should clock out now. 
         * Their long (and expensive) contexts have been distilled into the specification.
