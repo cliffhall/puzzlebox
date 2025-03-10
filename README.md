@@ -12,12 +12,12 @@ Marshalling multiple agents toward a big goal is tougher than just breaking down
 
 * With puzzlebox, members of agentic teams can change and be updated about changes to the state and available actions of a shared state machine representing their group's focus.
 
-## What is a Puzzle?
+## What is a puzzle?
 A Puzzle in puzzlebox is a [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine). It's just easier to say, write, and think about.
 
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
-### Properties of a Puzzle
+### Properties of a puzzle
 - A finite number of discrete states, e.g., "Inception", "Specification", "DomainModeling", "Design", "Build", etc.
 - Each state may have any number of actions (including 0) that initiate transition to another state.
 - There is an initial state.
