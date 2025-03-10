@@ -156,7 +156,6 @@ These screenshots show the various MCP tools and resources implemented by the se
 
 - `npm run start`
 - Launches an SSE-based/MCP server on port `:3001` with endpoint `/sse`
-- This has a single instance of the MCP server which multiple clients can connect to via SSE
 - **MUST BE LAUNCHED BEFORE RUNNING INSPECTOR**
 
 ### Inspector
