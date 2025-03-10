@@ -39,7 +39,7 @@ A Puzzle in puzzlebox is a [finite state machine](https://en.wikipedia.org/wiki/
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
 ### Properties of a puzzle
-- A finite number of discrete states, e.g., "Series Concept and Tone", "World Building", "Arc Plotting", "Episode Planning", "Plotline Blending", "Script Writing" etc.
+- A finite number of discrete states, e.g., "Series Concept and Tone", "World Building", "Arc Plotting", "Episode Planning", "Plotline Blending", "Episode Outline", "Script Writing" etc.
 - Each state may have any number of actions (including 0) that initiate transition to another state.
 - There is an initial state.
 - There is a current state that may differ after actions have been performed on the puzzle.
