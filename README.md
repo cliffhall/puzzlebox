@@ -13,7 +13,7 @@ You can't control all that with just a prompt.
 ## What is a Puzzle?
 A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write, and think about. 
 
-Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to move between them, you make twists on the planes of the cube. 
+Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism. 
 
 ### Properties of a Puzzle
 - A finite number of discrete states, e.g., "Inception", "Specification", "DomainModeling", "Design", "Build", etc.
