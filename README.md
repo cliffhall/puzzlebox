@@ -24,7 +24,7 @@ Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition
 - There is a current state that may differ after actions have been performed on the puzzle.
 - Transitions can be canceled by state exit and enter guards, e.g., Consult LLM via client sampling request.
 
-## What is Puzzlebox
+## What is puzzlebox?
 
 An **MCP Server** implementation that:
   - Manages puzzle instances
