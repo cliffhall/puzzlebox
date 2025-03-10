@@ -150,7 +150,7 @@ These screenshots show the various MCP tools and resources implemented by the se
 ### Build
 
 - `npm run build`
-- Builds the stdio-based MCP server runtime at `/dist/index.js`
+- Builds the MCP server runtime at `/dist/index.js`
 
 ### Start
 
@@ -167,7 +167,7 @@ These screenshots show the various MCP tools and resources implemented by the se
 - In the Inspector UI:
   - Make sure `Transport Type` is set to `SSE`
   - Make sure `URL` is set to http://localhost:3001/sse
-  - Click its **"Connect"** button to connect to the MCP Proxy
+  - Click its **"Connect"** button to connect to the puzzlebox server.
     - You should see Green light 🟢and **"Connected"** message.
   - Click its **List Tools** button
 
