@@ -6,7 +6,7 @@ An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main)
 ## What problem does puzzlebox address?
 Marshalling multiple agents toward a big goal is about more than just breaking down a prompt into tasks and enabling collaboration.
 
-A large software project typically moves through a non-linear and occasionally looping path from inception to design to building to testing to documentation to marketing to production. Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
+A large software project typically moves through a non-linear and occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 
 You can't control all that with just a prompt. 
 
