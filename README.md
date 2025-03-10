@@ -4,16 +4,18 @@
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts dynamically configurable [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) for managing agent and team process state.  
 
 ## What problem does puzzlebox address?
-Marshalling multiple agents toward a big goal is about more than just breaking down a prompt into tasks and enabling collaboration.
+Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them.
 
-A large software project typically moves through a non-linear and occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
+* A large software project typically moves through a multi-step, occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. 
 
-You can't control all that with just a prompt. 
+* Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
+
+* With puzzlebox, members of agentic teams can change and be updated about changes to the state and available actions of a common state machines representing their group's focus.
 
 ## What is a Puzzle?
-A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write, and think about. 
+A Puzzle in puzzlebox is a finite state machine. It's just easier to say, write, and think about.
 
-Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism. 
+Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
 ### Properties of a Puzzle
 - A finite number of discrete states, e.g., "Inception", "Specification", "DomainModeling", "Design", "Build", etc.
