@@ -2,10 +2,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createServer } from "./puzzlebox.ts";
 import express from "express";
 
-// Express app for
 const app = express();
-app.use(express.json());
-
 const { server } = createServer();
 let transport: SSEServerTransport;
 
@@ -20,7 +17,7 @@ app.get("/sse", async (req, res) => {
 
 app.post("/message", async (req, res) => {
   console.log("Client Message", transport?.['_sessionId']);
-  await transport.handlePostMessage(req, res, req.body);
+  await transport.handlePostMessage(req, res);
 });
 
 const PORT = process.env.PORT || 3001;

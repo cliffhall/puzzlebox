@@ -1,6 +1,6 @@
-import { State, Action, StateName, ActionName } from "./types.js";
+import { State, Action, StateName, ActionName } from "../common/types.ts";
 
-import { puzzleSchema } from "./schemas.ts";
+import { puzzleSchema } from "../common/schemas.ts";
 
 export class Puzzle {
   id: string;

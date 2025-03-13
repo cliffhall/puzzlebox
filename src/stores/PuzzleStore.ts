@@ -1,4 +1,4 @@
-import { Puzzle } from "../common/Puzzle.ts";
+import { Puzzle } from "./Puzzle.ts";
 import { createId } from "../common/utils.ts";
 
 class PuzzleStore {

@@ -10913,7 +10913,7 @@ var zodToJsonSchema = (schema, options) => {
   return combined;
 };
 
-// src/common/Puzzle.ts
+// src/stores/Puzzle.ts
 var Puzzle = class {
   id;
   states = /* @__PURE__ */ new Map();
@@ -11798,7 +11798,6 @@ var createServer = () => {
 // src/index.ts
 var import_express = __toESM(require("express"), 1);
 var app = (0, import_express.default)();
-app.use(import_express.default.json());
 var { server } = createServer();
 var transport;
 app.get("/sse", async (req, res) => {
@@ -11811,7 +11810,8 @@ app.get("/sse", async (req, res) => {
 });
 app.post("/message", async (req, res) => {
   console.log("Client Message", transport == null ? void 0 : transport["_sessionId"]);
-  await transport.handlePostMessage(req, res, req.body);
+  console.log(req.body);
+  await transport.handlePostMessage(req, res);
 });
 var PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
