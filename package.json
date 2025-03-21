@@ -2,8 +2,9 @@
   "name": "puzzlebox",
   "version": "1.0.0",
   "scripts": {
-    "build": "node esbuild.config.cjs",
-    "start": "node dist/index.cjs",
+    "build": "node esbuild.config.cjs && echo '{\"type\": \"commonjs\"}' > dist/package.json",
+    "stdio:proxy": "npx mcp-proxy --port 3001 --endpoint /sse node dist/stdio.js",
+    "sse:direct": "cd dist && node sse.js",
     "inspector": "npx @modelcontextprotocol/inspector",
     "format": "prettier --write ./src",
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",

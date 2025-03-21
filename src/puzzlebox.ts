@@ -5,7 +5,7 @@ import {
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   SubscribeRequestSchema,
-  UnsubscribeRequestSchema
+  UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   noArgSchema,
@@ -19,13 +19,12 @@ import {
   countPuzzles,
   getPuzzleSnapshot,
   performAction,
-  getPuzzleList
+  getPuzzleList,
 } from "./tools/puzzles.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {PUZZLE_RESOURCE_PATH, getPuzzleResourceUri} from "./common/utils.js";
+import { PUZZLE_RESOURCE_PATH, getPuzzleResourceUri } from "./common/utils.js";
 
 export const createServer = () => {
-
   const server = new Server(
     {
       name: "puzzlebox",
@@ -73,7 +72,6 @@ export const createServer = () => {
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -97,12 +95,11 @@ export const createServer = () => {
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
             const uri = getPuzzleResourceUri(args.puzzleId);
-            if (subscriptions.has(uri)) await server.sendResourceUpdated({ uri });
+            if (subscriptions.has(uri))
+              await server.sendResourceUpdated({ uri });
           }
           return {
-            content: [
-              { type: "text", text: JSON.stringify(result, null, 2) },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         }
         case "count_puzzles": {
@@ -141,7 +138,6 @@ export const createServer = () => {
     const puzzles = getPuzzleList().puzzles;
     let resources = puzzles.slice(startIndex, endIndex);
 
-
     let nextCursor: string | undefined;
     if (endIndex < puzzles.length) {
       nextCursor = btoa(endIndex.toString());
@@ -159,7 +155,8 @@ export const createServer = () => {
         {
           uriTemplate: `${PUZZLE_RESOURCE_PATH}{id}`,
           name: "Puzzle Snapshot",
-          description: "The current state and available actions for the given puzzle id",
+          description:
+            "The current state and available actions for the given puzzle id",
         },
       ],
     };
@@ -173,13 +170,15 @@ export const createServer = () => {
       const result = getPuzzleSnapshot(puzzleId);
       console.log(result);
       return {
-        contents: [{
-          uri,
-          name: `Puzzle ${puzzleId}`,
-          mimeType: "application/json",
-          text: `Current state: ${result.currentState}, Available actions: ${result?.availableActions?.join(", ")}`,
-          json: result
-        }],
+        contents: [
+          {
+            uri,
+            name: `Puzzle ${puzzleId}`,
+            mimeType: "application/json",
+            text: `Current state: ${result.currentState}, Available actions: ${result?.availableActions?.join(", ")}`,
+            json: result,
+          },
+        ],
       };
     }
 
