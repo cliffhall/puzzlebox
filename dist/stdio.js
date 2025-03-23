@@ -6476,7 +6476,7 @@ var Protocol = class {
     Promise.resolve().then(() => handler(notification)).catch((error) => this._onerror(new Error(`Uncaught error in notification handler: ${error}`)));
   }
   _onrequest(request) {
-    var _a, _b;
+    var _a, _b, _c;
     const handler = (_a = this._requestHandlers.get(request.method)) !== null && _a !== void 0 ? _a : this.fallbackRequestHandler;
     if (handler === void 0) {
       (_b = this._transport) === null || _b === void 0 ? void 0 : _b.send({
@@ -6491,7 +6491,11 @@ var Protocol = class {
     }
     const abortController = new AbortController();
     this._requestHandlerAbortControllers.set(request.id, abortController);
-    Promise.resolve().then(() => handler(request, { signal: abortController.signal })).then((result) => {
+    const extra = {
+      signal: abortController.signal,
+      sessionId: (_c = this._transport) === null || _c === void 0 ? void 0 : _c.sessionId
+    };
+    Promise.resolve().then(() => handler(request, extra)).then((result) => {
       var _a2;
       if (abortController.signal.aborted) {
         return;
@@ -6868,7 +6872,7 @@ var Server = class extends Protocol {
 };
 
 // src/puzzlebox.ts
-var createServer = () => {
+var createServer = (transports, subscriptions) => {
   const server2 = new Server(
     {
       name: "puzzlebox",
@@ -6883,7 +6887,6 @@ var createServer = () => {
       }
     }
   );
-  let subscriptions = /* @__PURE__ */ new Set();
   server2.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -6934,8 +6937,19 @@ var createServer = () => {
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
             const uri = getPuzzleResourceUri(args.puzzleId);
-            if (subscriptions.has(uri))
-              await server2.sendResourceUpdated({ uri });
+            if (subscriptions.has(uri)) {
+              const subscribers = subscriptions.get(uri);
+              for (const subscriber of subscribers) {
+                const transport = transports.get(
+                  subscriber
+                );
+                await transport.send({
+                  jsonrpc: "2.0",
+                  method: "notifications/resources/updated",
+                  params: { uri }
+                });
+              }
+            }
           }
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
@@ -7014,13 +7028,22 @@ var createServer = () => {
     throw new Error(`Unknown resource: ${uri}`);
   });
   server2.setRequestHandler(SubscribeRequestSchema, async (request) => {
+    var _a;
+    const sessionId = (_a = server2 == null ? void 0 : server2.transport) == null ? void 0 : _a.sessionId;
     const { uri } = request.params;
-    subscriptions.add(uri);
+    const subscribers = subscriptions.has(uri) ? subscriptions.get(uri) : /* @__PURE__ */ new Set();
+    subscribers.add(sessionId);
+    subscriptions.set(uri, subscribers);
     return {};
   });
   server2.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+    var _a;
     const { uri } = request.params;
-    subscriptions.delete(uri);
+    if (subscriptions.has(uri)) {
+      const sessionId = (_a = server2 == null ? void 0 : server2.transport) == null ? void 0 : _a.sessionId;
+      const subscribers = subscriptions.get(uri);
+      if (subscribers.has(sessionId)) subscribers.delete(sessionId);
+    }
     return {};
   });
   return { server: server2 };

@@ -32,10 +32,10 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/inspector": "^0.5.1",
-    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@modelcontextprotocol/inspector": "^0.6.0",
+    "@modelcontextprotocol/sdk": "^1.7.0",
     "@types/express": "^5.0.0",
-    "mcp-proxy": "^2.4.0",
+    "mcp-proxy": "^2.11.0",
     "node-fetch": "^2.7.0"
   }
 }

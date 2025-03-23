@@ -25745,8 +25745,8 @@ var require_application = __commonJS({
       tryRender(view, renderOptions, done);
     };
     app2.listen = function listen() {
-      var server2 = http.createServer(this);
-      return server2.listen.apply(server2, arguments);
+      var server = http.createServer(this);
+      return server.listen.apply(server, arguments);
     };
     function logerror(err) {
       if (this.get("env") !== "test") console.error(err.stack || err.toString());
@@ -33960,7 +33960,7 @@ var Protocol = class {
     Promise.resolve().then(() => handler(notification)).catch((error) => this._onerror(new Error(`Uncaught error in notification handler: ${error}`)));
   }
   _onrequest(request) {
-    var _a, _b;
+    var _a, _b, _c;
     const handler = (_a = this._requestHandlers.get(request.method)) !== null && _a !== void 0 ? _a : this.fallbackRequestHandler;
     if (handler === void 0) {
       (_b = this._transport) === null || _b === void 0 ? void 0 : _b.send({
@@ -33975,7 +33975,11 @@ var Protocol = class {
     }
     const abortController = new AbortController();
     this._requestHandlerAbortControllers.set(request.id, abortController);
-    Promise.resolve().then(() => handler(request, { signal: abortController.signal })).then((result) => {
+    const extra = {
+      signal: abortController.signal,
+      sessionId: (_c = this._transport) === null || _c === void 0 ? void 0 : _c.sessionId
+    };
+    Promise.resolve().then(() => handler(request, extra)).then((result) => {
       var _a2;
       if (abortController.signal.aborted) {
         return;
@@ -34352,8 +34356,8 @@ var Server = class extends Protocol {
 };
 
 // src/puzzlebox.ts
-var createServer = () => {
-  const server2 = new Server(
+var createServer = (transports2, subscriptions2) => {
+  const server = new Server(
     {
       name: "puzzlebox",
       version: "1.0.0"
@@ -34367,8 +34371,7 @@ var createServer = () => {
       }
     }
   );
-  let subscriptions = /* @__PURE__ */ new Set();
-  server2.setRequestHandler(ListToolsRequestSchema, async () => {
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
         {
@@ -34394,7 +34397,7 @@ var createServer = () => {
       ]
     };
   });
-  server2.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -34418,8 +34421,19 @@ var createServer = () => {
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
             const uri = getPuzzleResourceUri(args.puzzleId);
-            if (subscriptions.has(uri))
-              await server2.sendResourceUpdated({ uri });
+            if (subscriptions2.has(uri)) {
+              const subscribers = subscriptions2.get(uri);
+              for (const subscriber of subscribers) {
+                const transport = transports2.get(
+                  subscriber
+                );
+                await transport.send({
+                  jsonrpc: "2.0",
+                  method: "notifications/resources/updated",
+                  params: { uri }
+                });
+              }
+            }
           }
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
@@ -34440,7 +34454,7 @@ var createServer = () => {
       );
     }
   });
-  server2.setRequestHandler(ListResourcesRequestSchema, async (request) => {
+  server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
     var _a, _b;
     const PAGE_SIZE = 25;
     const cursor = (_a = request.params) == null ? void 0 : _a.cursor;
@@ -34464,7 +34478,7 @@ var createServer = () => {
       nextCursor
     };
   });
-  server2.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
     return {
       resourceTemplates: [
         {
@@ -34475,7 +34489,7 @@ var createServer = () => {
       ]
     };
   });
-  server2.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     var _a;
     const uri = request.params.uri;
     if (uri.startsWith(PUZZLE_RESOURCE_PATH)) {
@@ -34497,48 +34511,44 @@ var createServer = () => {
     }
     throw new Error(`Unknown resource: ${uri}`);
   });
-  server2.setRequestHandler(SubscribeRequestSchema, async (request) => {
+  server.setRequestHandler(SubscribeRequestSchema, async (request) => {
+    var _a;
+    const sessionId = (_a = server == null ? void 0 : server.transport) == null ? void 0 : _a.sessionId;
     const { uri } = request.params;
-    subscriptions.add(uri);
+    const subscribers = subscriptions2.has(uri) ? subscriptions2.get(uri) : /* @__PURE__ */ new Set();
+    subscribers.add(sessionId);
+    subscriptions2.set(uri, subscribers);
     return {};
   });
-  server2.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+  server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+    var _a;
     const { uri } = request.params;
-    subscriptions.delete(uri);
+    if (subscriptions2.has(uri)) {
+      const sessionId = (_a = server == null ? void 0 : server.transport) == null ? void 0 : _a.sessionId;
+      const subscribers = subscriptions2.get(uri);
+      if (subscribers.has(sessionId)) subscribers.delete(sessionId);
+    }
     return {};
   });
-  return { server: server2 };
+  return { server };
 };
 
 // src/sse.ts
 var import_express = __toESM(require_express2(), 1);
-var { server } = createServer();
 var app = (0, import_express.default)();
 var transports = /* @__PURE__ */ new Map();
+var subscriptions = /* @__PURE__ */ new Map();
 app.get("/sse", async (req, res) => {
-  var _a, _b;
-  let transport;
-  if ((_a = req == null ? void 0 : req.query) == null ? void 0 : _a.sessionId) {
-    const sessionId = ((_b = req == null ? void 0 : req.query) == null ? void 0 : _b.sessionId) || "none";
-    transport = transports.get(sessionId);
-    console.log("Client Reconnecting? ", transport.sessionId);
-  } else {
-    transport = new SSEServerTransport("/message", res);
-    transports.set(transport.sessionId, transport);
-    await server.connect(transport);
-    console.log("Client Connected: ", transport.sessionId);
-  }
-  server.onclose = async () => {
-    console.log("Client Disconnected: ", transport.sessionId);
-    transports.delete(transport.sessionId);
-  };
+  const { server } = createServer(transports, subscriptions);
+  const transport = new SSEServerTransport("/message", res);
+  const sessionId = transport.sessionId;
+  transports.set(sessionId, transport);
+  await server.connect(transport);
 });
 app.post("/message", async (req, res) => {
-  var _a;
-  const sessionId = ((_a = req == null ? void 0 : req.query) == null ? void 0 : _a.sessionId) || "none";
-  const transport = transports.get(sessionId);
-  if (transport) {
-    console.log("Client Message from", sessionId);
+  const sessionId = req.query.sessionId;
+  if (req.query.sessionId && transports.has(sessionId)) {
+    const transport = transports.get(sessionId);
     await transport.handlePostMessage(req, res);
   }
 });
