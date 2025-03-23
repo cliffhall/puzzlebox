@@ -14,9 +14,9 @@ interface CountPuzzlesResponse {
 }
 
 interface GetPuzzleListEntry {
-    uri: string,
-    name: string,
-    mimeType: string
+  uri: string;
+  name: string;
+  mimeType: string;
 }
 
 interface GetPuzzleListResponse {
@@ -93,9 +93,9 @@ export function getPuzzleList(): GetPuzzleListResponse {
         uri: getPuzzleResourceUri(puzzleId),
         name: puzzleId,
         mimeType: "text/plain",
-      }
-    })
-  }
+      };
+    }),
+  };
 }
 
 /**

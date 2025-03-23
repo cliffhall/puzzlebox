@@ -39,7 +39,7 @@ class PuzzleStore {
   /**
    * Get a list of registered puzzle ids
    */
-  static getPuzzleList():string[] {
+  static getPuzzleList(): string[] {
     return Array.from(this.puzzles.keys());
   }
   /**

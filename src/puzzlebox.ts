@@ -5,7 +5,7 @@ import {
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   SubscribeRequestSchema,
-  UnsubscribeRequestSchema
+  UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   noArgSchema,
@@ -19,13 +19,16 @@ import {
   countPuzzles,
   getPuzzleSnapshot,
   performAction,
-  getPuzzleList
+  getPuzzleList,
 } from "./tools/puzzles.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {PUZZLE_RESOURCE_PATH, getPuzzleResourceUri} from "./common/utils.js";
+import { PUZZLE_RESOURCE_PATH, getPuzzleResourceUri } from "./common/utils.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
-export const createServer = () => {
-
+export const createServer = (
+  transports: Map<string, SSEServerTransport>,
+  subscriptions: Map<string, Set<string>>,
+) => {
   const server = new Server(
     {
       name: "puzzlebox",
@@ -40,8 +43,6 @@ export const createServer = () => {
       },
     },
   );
-
-  let subscriptions: Set<string> = new Set();
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -73,7 +74,6 @@ export const createServer = () => {
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -97,12 +97,22 @@ export const createServer = () => {
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
             const uri = getPuzzleResourceUri(args.puzzleId);
-            if (subscriptions.has(uri)) await server.sendResourceUpdated({ uri });
+            if (subscriptions.has(uri)) {
+              const subscribers = subscriptions.get(uri) as Set<string>; // Update subscribers of state change
+              for (const subscriber of subscribers) {
+                const transport = transports.get(
+                  subscriber,
+                ) as SSEServerTransport;
+                await transport.send({
+                  jsonrpc: "2.0",
+                  method: "notifications/resources/updated",
+                  params: { uri },
+                });
+              }
+            }
           }
           return {
-            content: [
-              { type: "text", text: JSON.stringify(result, null, 2) },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         }
         case "count_puzzles": {
@@ -141,7 +151,6 @@ export const createServer = () => {
     const puzzles = getPuzzleList().puzzles;
     let resources = puzzles.slice(startIndex, endIndex);
 
-
     let nextCursor: string | undefined;
     if (endIndex < puzzles.length) {
       nextCursor = btoa(endIndex.toString());
@@ -159,7 +168,8 @@ export const createServer = () => {
         {
           uriTemplate: `${PUZZLE_RESOURCE_PATH}{id}`,
           name: "Puzzle Snapshot",
-          description: "The current state and available actions for the given puzzle id",
+          description:
+            "The current state and available actions for the given puzzle id",
         },
       ],
     };
@@ -173,13 +183,15 @@ export const createServer = () => {
       const result = getPuzzleSnapshot(puzzleId);
       console.log(result);
       return {
-        contents: [{
-          uri,
-          name: `Puzzle ${puzzleId}`,
-          mimeType: "application/json",
-          text: `Current state: ${result.currentState}, Available actions: ${result?.availableActions?.join(", ")}`,
-          json: result
-        }],
+        contents: [
+          {
+            uri,
+            name: `Puzzle ${puzzleId}`,
+            mimeType: "application/json",
+            text: `Current state: ${result.currentState}, Available actions: ${result?.availableActions?.join(", ")}`,
+            json: result,
+          },
+        ],
       };
     }
 
@@ -187,14 +199,23 @@ export const createServer = () => {
   });
 
   server.setRequestHandler(SubscribeRequestSchema, async (request) => {
+    const sessionId = server?.transport?.sessionId as string;
     const { uri } = request.params;
-    subscriptions.add(uri);
+    const subscribers = subscriptions.has(uri)
+      ? (subscriptions.get(uri) as Set<string>)
+      : new Set<string>();
+    subscribers.add(sessionId);
+    subscriptions.set(uri, subscribers);
     return {};
   });
 
   server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
     const { uri } = request.params;
-    subscriptions.delete(uri);
+    if (subscriptions.has(uri)) {
+      const sessionId = server?.transport?.sessionId as string;
+      const subscribers = subscriptions.get(uri) as Set<string>;
+      if (subscribers.has(sessionId)) subscribers.delete(sessionId);
+    }
     return {};
   });
 
