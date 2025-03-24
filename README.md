@@ -122,7 +122,7 @@ Puzzlebox is an **MCP Server** implementation that:
 
 ## MCP Tools
 <details>
-<summary>These are functions that are exposed to the agents for managing puzzles.</summary>
+<summary>These functions are exposed to the agents for managing puzzles.</summary>
 
 ### ⚙️ **`add_puzzle`**
 #### Add a new instance of a puzzle (finite state machine).
