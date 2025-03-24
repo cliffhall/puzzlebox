@@ -8,7 +8,7 @@ An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main)
 ## What problem does puzzlebox address?
 
 <details>
-<summary>Collaboration and coordination are related but different problems. Puzzlebox solves for coordination.</summary>
+<summary>Collaboration and coordination are related but different problems. Collaboration is good for non-trivial yet relatively simple tasks. To tackle long horizon efforts, puzzlebox solves for coordination.</summary>
 
 Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them. 
 
