@@ -21,7 +21,9 @@ Consider enterprise-level software development processes:
 
 * Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 
-With puzzlebox, members of agentic teams can be made process-aware.
+* Even within a phase, teams may cycle through their own phases, like Agile sprints. A certain amount of work is scoped for the sprint, the team works on their parts, and at the end of the sprint they decide what to tackle next. It accepts that each sprint could change the course of future development. These cycles can also be represented as puzzles.
+
+With puzzlebox, members of agentic teams can be made process-aware, but the process itself is not subject to hallucination.
 
 ### Scenario: Teams passing the torch
 
