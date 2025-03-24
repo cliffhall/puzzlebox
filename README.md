@@ -150,7 +150,9 @@ Puzzlebox is an **MCP Server** implementation that:
 ## Local Setup
 <details>
 <summary>
-Running locally requires Node and npm be installed. Then follow these steps...
+
+Running locally requires [Node and npm be installed](https://nodejs.org/en/download). Then follow these steps...
+
 </summary>
 
 ### Install Dependencies
