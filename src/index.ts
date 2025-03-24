@@ -1,4 +1,5 @@
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { createServer } from "./puzzlebox.ts";
 import express from "express";
 
@@ -6,10 +7,7 @@ import express from "express";
 const app = express();
 
 // Data shared across all server/transport pairs
-const transports: Map<string, SSEServerTransport> = new Map<
-  string,
-  SSEServerTransport
->(); // Transports by sessionId
+const transports: Map<string, Transport> = new Map<string, Transport>(); // Transports by sessionId
 const subscriptions: Map<string, Set<string>> = new Map<string, Set<string>>(); // Subscriber sessionIds by uri
 
 // Clients connect here first

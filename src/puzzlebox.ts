@@ -23,10 +23,10 @@ import {
 } from "./tools/puzzles.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { PUZZLE_RESOURCE_PATH, getPuzzleResourceUri } from "./common/utils.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 export const createServer = (
-  transports: Map<string, SSEServerTransport>,
+  transports: Map<string, Transport>,
   subscriptions: Map<string, Set<string>>,
 ) => {
   const server = new Server(
@@ -102,7 +102,7 @@ export const createServer = (
               for (const subscriber of subscribers) {
                 const transport = transports.get(
                   subscriber,
-                ) as SSEServerTransport;
+                ) as Transport;
                 await transport.send({
                   jsonrpc: "2.0",
                   method: "notifications/resources/updated",
