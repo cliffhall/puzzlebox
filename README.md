@@ -93,6 +93,7 @@ Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition
 
 <summary>Most MCP servers have a one-to-one relationship with the client. Puzzlebox is different.</summary>
 
+### Many clients sharing dynamic resources
 Puzzlebox is an **MCP Server** implementation that:
   - Supports multiple client connections that can create and monitor shared, dynamic resources. 
   - Manages puzzle instances
