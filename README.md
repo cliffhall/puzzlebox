@@ -11,7 +11,7 @@ An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main)
 <summary>Collaboration and coordination are related but different problems. Collaboration is good for non-trivial yet relatively simple tasks. To tackle long horizon efforts, puzzlebox solves for coordination.</summary>
 
 ### Teams need coordination
-Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them. 
+Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and [enabling collaboration](https://github.com/cliffhall/GooseTeam) between them. 
 
 Just as a few agents can collaborate to complete a small project, several teams of process-aware agents need to operate within distinct project phases to tackle long horizon efforts.
 
