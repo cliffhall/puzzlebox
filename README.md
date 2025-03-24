@@ -3,9 +3,13 @@
 
 ## Coordinating agents with state machines 
 
-An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts state machines as dynamic resources that clients can subscribe to and be updated when their state changes.
+An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts  [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) as dynamic resources that clients can subscribe to and be updated when their state changes.
 
 ## What problem does puzzlebox address?
+
+<details>
+<summary>Collaboration and coordination are related but different problems. Puzzlebox solves for coordination.</summary>
+
 Marshalling multiple agents toward a big goal is tougher than just breaking down a request into tasks, assigning them to available agents and enabling collaboration between them. 
 
 Just as a few agents can collaborate to complete a small project, several teams of process-aware agents need to operate within distinct project phases to tackle long horizon efforts.
@@ -33,8 +37,13 @@ Three agents are working. The current state of their shared puzzle is "Specifica
         * Their long (and expensive) contexts have been distilled into the specification.
         * The "Design" team picks from here, with the spec as a resource and their contexts fresh and role-specific.
 
+</details>
+
 ## What is a puzzle?
-A Puzzle in puzzlebox is a [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine). It's just easier to say, write, and think about.
+
+<details>
+
+<summary>A puzzle is a _finite state machine_. It's just easier to say, write, and think about.</summary>
 
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
@@ -45,20 +54,7 @@ Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition
 - There is a current state that may differ after actions have been performed on the puzzle.
 - Transitions can be canceled by state exit and enter guards, e.g., Consult LLM via client sampling request.
 
-## What is puzzlebox?
-
-An **MCP Server** implementation that:
-  - Manages puzzle instances
-  - Exposes tools for: 
-    - Adding puzzles
-    - Getting a snapshot of the state and available actions for a given puzzle in the box
-    - Performing actions on a given puzzle in the box that trigger state transitions
-  - Exposes registered puzzles as resources
-    - Clients can use the `Puzzle Snapshot` resource template to fetch the resource by ID
-    - Resource URI is `puzzlebox:/puzzle/{puzzleId}`
-    - Clients can subscribe/unsubscribe to individual resource URIs
-  
-## Simple Example
+### A Simple Example
 ```json
 {
   "initialState": "LOBBY",
@@ -85,19 +81,43 @@ An **MCP Server** implementation that:
 }
 ```
 
-## How It Works
+</details>
+
+## What is puzzlebox?
+
+<details>
+
+<summary>Most MCP servers have a one-to-one relationship with the client. Puzzlebox is different.</summary>
+
+Puzzlebox is an **MCP Server** implementation that:
+  - Supports multiple client connections that can create and monitor shared, dynamic resources. 
+  - Manages puzzle instances
+  - Exposes tools for: 
+    - Adding puzzles
+    - Getting a snapshot of the state and available actions for a given puzzle in the box
+    - Performing actions on a given puzzle in the box that trigger state transitions
+  - Exposes registered puzzles as resources
+    - Clients can use the `Puzzle Snapshot` resource template to fetch the resource by ID
+    - Resource URI is `puzzlebox:/puzzle/{puzzleId}`
+    - Clients can subscribe/unsubscribe to individual resource URIs
+
+### How It Works
 1. Clients connect to a puzzlebox SSE server.
 2. Clients register puzzles with the server.
-3. Clients perform actions on puzzles that may change their state and available actions.
-4. The puzzlebox server ensures that any attempted action is valid for the current state of the given puzzle.
-5. If an action is valid, a transition to the target state is initiated.
-6. During transition, optional exit and enter guards may send sampling requests to the client, the results of which could lead to cancellation of the transition (think acceptance testing by stakeholders)
-7. If guards pass, the state transition completes.
-8. Clients update their UI based on the new state.
-9. Clients can subscribe to a given puzzle to receive updates when its state changes.
-10. If the client receives a resource updated notification, they can either read the resource or use the `get_puzzle_snapshot` tool to get the current state and available actions.
+3. Clients can subscribe to a given puzzle to receive updates when its state changes.
+4. Clients perform actions on puzzles that may change their state and available actions.
+5. The puzzlebox server ensures that any attempted action is valid for the current state of the given puzzle.
+6. If an action is valid, a transition to the target state is initiated.
+7. During transition, optional exit and enter guards may send sampling requests to the client, the results of which could lead to cancellation of the transition (think acceptance testing by stakeholders)
+8. If guards pass, the state transition completes.
+9. When a client receives a resource updated notification, they can either read the resource or use the `get_puzzle_snapshot` tool to get the current state and available actions.
+10. Clients update their UI based on the new state.
+
+</details>
 
 ## MCP Tools
+<details>
+<summary>These are functions that are exposed to the agents for managing puzzles.</summary>
 
 ### ⚙️ **`add_puzzle`**
 #### Add a new instance of a puzzle (finite state machine).
@@ -120,8 +140,11 @@ An **MCP Server** implementation that:
 - **Inputs:** None
 - **Returns:** JSON object with current `count` of registered puzzles
 
+</details>
+
 ## Local Setup
-<details><summary>
+<details>
+<summary>
 Running locally requires Node and npm be installed. Then follow these steps...
 </summary>
 
@@ -181,8 +204,9 @@ Running locally requires Node and npm be installed. Then follow these steps...
 </details>
 
 ## Screenshots
-Testing of the server was done with the official reference client - [the MCP Inspector](https://github.com/modelcontextprotocol/inspector). 
 <details><summary>These screenshots show the various MCP tools and resources implemented by the sever.</summary>
+
+Testing of the server was done with the official reference client - [the MCP Inspector](https://github.com/modelcontextprotocol/inspector). 
 
 ### 0 - List Tools
 ![0. list_tools](images/00_list_tools.png)
