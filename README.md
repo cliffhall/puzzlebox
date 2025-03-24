@@ -48,6 +48,7 @@ Three agents are working. The current state of their shared puzzle is "Specifica
 
 <summary>A puzzle is a finite state machine. It's just easier to say, write, and think about.</summary>
 
+
 Imagine the Rubik's Cube puzzle. It has 43 quintillion states, and to transition between them, you act upon it by rotating the intersecting planes of the mechanism.
 
 ### Properties of a puzzle
