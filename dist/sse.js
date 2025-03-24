@@ -34496,7 +34496,6 @@ var createServer = (transports2, subscriptions2) => {
       console.log(`Received resource request: ${uri}`);
       const puzzleId = uri.split(PUZZLE_RESOURCE_PATH)[1];
       const result = getPuzzleSnapshot(puzzleId);
-      console.log(result);
       return {
         contents: [
           {

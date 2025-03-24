@@ -78,7 +78,7 @@ export function getPuzzleSnapshot(puzzleId: string): GetPuzzleSnapshotResponse {
 }
 
 /**
- * List puzzles to the puzzle box
+ * Count puzzles in the puzzle box
  */
 export function countPuzzles(): CountPuzzlesResponse {
   return {
@@ -86,6 +86,9 @@ export function countPuzzles(): CountPuzzlesResponse {
   };
 }
 
+/**
+ * List the puzzles in the puzzle box
+ */
 export function getPuzzleList(): GetPuzzleListResponse {
   return {
     puzzles: PuzzleStore.getPuzzleList().map((puzzleId) => {
