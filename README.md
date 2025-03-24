@@ -85,47 +85,6 @@ An **MCP Server** implementation that:
 }
 ```
 
-## Screenshots
-Testing of the server was done with the official reference client - [the MCP Inspector](https://github.com/modelcontextprotocol/inspector). 
-These screenshots show the various MCP tools and resources implemented by the sever..
-
-### 0 - List Tools
-![0. list_tools](images/00_list_tools.png)
-
-### 1 - Add Puzzle
-![1. add_puzzle](images/1_add_puzzle.png)
-
-### 2 - Get Puzzle Snapshot (Initial State)
-![2. get_puzzle_snapshot](images/2_get_puzzle_snapshot.png)
-
-### 3 - Perform Action On Puzzle
-![3. perform_action_on_puzzle](images/3_perform_action_on_puzzle.png)
-
-### 4 - Get Puzzle Snapshot (New State)
-![4. get_puzzle_snapshot](images/4_get_puzzle_snapshot.png)
-
-### 5 - Perform Action On Puzzle
-![5. perform_action_on_puzzle](images/5_perform_action_on_puzzle.png)
-
-### 6 - Get Puzzle Snapshot (Another New State)
-![6. get_puzzle_snapshot](images/6_get_puzzle_snapshot.png)
-
-### 7 - List Resources
-![7. list resources](images/07_list_resources.png)
-
-### 8 - Resource Template
-![8. resource_template](images/08_resource_template.png)
-
-### 9 - Unsubscribed Resource
-![9. unsubscribed resource](images/09_unsubscribed_resource.png)
-
-### 10 - Subscribed Resource
-![10. unsubscribed resource](images/10_subscribed_resource.png)
-
-### 11 - Resource Updated Notification
-![11. subscribed resource updated](images/11_resource_updated.png)
-
-
 ## How It Works
 1. Clients connect to a puzzlebox SSE server.
 2. Clients register puzzles with the server.
@@ -161,7 +120,10 @@ These screenshots show the various MCP tools and resources implemented by the se
 - **Inputs:** None
 - **Returns:** JSON object with current `count` of registered puzzles
 
-## Developer Setup
+## Local Setup
+<details><summary>
+Running locally requires Node and npm be installed. Then follow these steps...
+</summary>
 
 ### Install Dependencies
 
@@ -215,3 +177,47 @@ These screenshots show the various MCP tools and resources implemented by the se
 
 - `npm run test`
 - Run the unit tests
+
+</details>
+
+## Screenshots
+Testing of the server was done with the official reference client - [the MCP Inspector](https://github.com/modelcontextprotocol/inspector). 
+<details><summary>These screenshots show the various MCP tools and resources implemented by the sever.</summary>
+
+### 0 - List Tools
+![0. list_tools](images/00_list_tools.png)
+
+### 1 - Add Puzzle
+![1. add_puzzle](images/1_add_puzzle.png)
+
+### 2 - Get Puzzle Snapshot (Initial State)
+![2. get_puzzle_snapshot](images/2_get_puzzle_snapshot.png)
+
+### 3 - Perform Action On Puzzle
+![3. perform_action_on_puzzle](images/3_perform_action_on_puzzle.png)
+
+### 4 - Get Puzzle Snapshot (New State)
+![4. get_puzzle_snapshot](images/4_get_puzzle_snapshot.png)
+
+### 5 - Perform Action On Puzzle
+![5. perform_action_on_puzzle](images/5_perform_action_on_puzzle.png)
+
+### 6 - Get Puzzle Snapshot (Another New State)
+![6. get_puzzle_snapshot](images/6_get_puzzle_snapshot.png)
+
+### 7 - List Resources
+![7. list resources](images/07_list_resources.png)
+
+### 8 - Resource Template
+![8. resource_template](images/08_resource_template.png)
+
+### 9 - Unsubscribed Resource
+![9. unsubscribed resource](images/09_unsubscribed_resource.png)
+
+### 10 - Subscribed Resource
+![10. unsubscribed resource](images/10_subscribed_resource.png)
+
+### 11 - Resource Updated Notification
+![11. subscribed resource updated](images/11_resource_updated.png)
+
+</details>
