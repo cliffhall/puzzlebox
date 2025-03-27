@@ -34412,7 +34412,10 @@ var createServer = (transports2, subscriptions2) => {
     };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    await logMessage("info", `Received Call Tool request: ${request.params.name}`);
+    await logMessage(
+      "info",
+      `Received Call Tool request: ${request.params.name}`
+    );
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -34449,7 +34452,10 @@ var createServer = (transports2, subscriptions2) => {
                   });
                 } else {
                   subscribers.delete(subscriber);
-                  await logMessage("info", `Disconnected subscriber removed: ${subscriber}`);
+                  await logMessage(
+                    "info",
+                    `Disconnected subscriber removed: ${subscriber}`
+                  );
                 }
               }
             }

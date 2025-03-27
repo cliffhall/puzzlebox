@@ -1,3 +1,5 @@
+import { PuzzleConfig } from "./schemas.js";
+
 export function createId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
 }
@@ -33,11 +35,7 @@ const configObj = {
   },
 };
 
-export function getTestPuzzleConfigString(): string {
-  return JSON.stringify(configObj);
-}
-
-export function getTestPuzzleConfigObject(): object {
+export function getTestPuzzleConfig(): PuzzleConfig {
   return configObj;
 }
 

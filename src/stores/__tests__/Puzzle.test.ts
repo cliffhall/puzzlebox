@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { getTestPuzzleConfigObject } from "../../common/utils.ts";
+import { getTestPuzzleConfig } from "../../common/utils.ts";
 import { Puzzle } from "../Puzzle.ts";
 
 /**
@@ -15,7 +15,7 @@ describe("Puzzle", () => {
 
   it("should construct a puzzle with id and config", () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
     expect(puzzle).toBeDefined();
     expect(puzzle.id).toEqual(PUZZLE_ID);
@@ -23,7 +23,7 @@ describe("Puzzle", () => {
 
   it("should return the initial state as current after construction", () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const STATE_NAME = "Closed";
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
     const state = puzzle.getCurrentState();
@@ -35,7 +35,7 @@ describe("Puzzle", () => {
 
   it("should get a state by name", () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const STATE_NAME = "Opened";
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
     const state = puzzle.getState(STATE_NAME);
@@ -47,7 +47,7 @@ describe("Puzzle", () => {
 
   it("should add an action to a state", () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const STATE_NAME = "Closed";
     const ACTION = { name: "Knock", targetState: "Closed" };
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
@@ -58,7 +58,7 @@ describe("Puzzle", () => {
 
   it("should get the list of valid action names for a state", () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const STATE_NAME = "Closed";
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
     const actions = puzzle.getActions(STATE_NAME);
@@ -68,7 +68,7 @@ describe("Puzzle", () => {
 
   it("should change state when performing a valid action", async () => {
     const PUZZLE_ID = "puzzle-123";
-    const PUZZLE_CONFIG = getTestPuzzleConfigObject();
+    const PUZZLE_CONFIG = getTestPuzzleConfig();
     const ACTION_NAME = "Open";
     const TARGET_STATE = "Opened";
     const puzzle = new Puzzle(PUZZLE_ID, PUZZLE_CONFIG);
