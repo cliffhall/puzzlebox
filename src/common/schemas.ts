@@ -20,8 +20,11 @@ export const puzzleSchema = z.object({
   states: z.record(z.string(), stateSchema),
 });
 
+// TypeScript type inferred from the schema
+export type PuzzleConfig = z.infer<typeof puzzleSchema>;
+
 export const addPuzzleSchema = z.object({
-  config: z.string(),
+  config: puzzleSchema,
 });
 
 export const getPuzzleSnapshotSchema = z.object({

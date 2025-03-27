@@ -32392,7 +32392,7 @@ var puzzleSchema = z.object({
   states: z.record(z.string(), stateSchema)
 });
 var addPuzzleSchema = z.object({
-  config: z.string()
+  config: puzzleSchema
 });
 var getPuzzleSnapshotSchema = z.object({
   puzzleId: z.string()
@@ -33798,10 +33798,8 @@ var PuzzleStore_default = PuzzleStore;
 // src/tools/puzzles.ts
 function addPuzzle(puzzleConfig) {
   let response = { success: false };
-  let parsed;
   try {
-    parsed = JSON.parse(puzzleConfig);
-    const config = puzzleSchema.safeParse(parsed);
+    const config = puzzleSchema.safeParse(puzzleConfig);
     if (config.success) {
       response.success = true;
       response.puzzleId = PuzzleStore_default.addPuzzle(config.data).id;
@@ -34371,7 +34369,23 @@ var createServer = (transports2, subscriptions2) => {
       }
     }
   );
+  let logLevel = "debug";
+  const loggingLevels = LoggingLevelSchema.options;
+  function messageIsIgnored(levelA, levelB) {
+    const indexA = loggingLevels.indexOf(levelA);
+    const indexB = loggingLevels.indexOf(levelB);
+    return indexA < indexB;
+  }
+  async function logMessage(level, message) {
+    if (!messageIsIgnored(level, logLevel)) {
+      await server.sendLoggingMessage({
+        level,
+        data: message
+      });
+    }
+  }
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    await logMessage("info", "Received List Tools request");
     return {
       tools: [
         {
@@ -34398,6 +34412,7 @@ var createServer = (transports2, subscriptions2) => {
     };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    await logMessage("info", `Received Call Tool request: ${request.params.name}`);
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -34420,18 +34435,22 @@ var createServer = (transports2, subscriptions2) => {
           );
           const result = await performAction(args.puzzleId, args.actionName);
           if (result.success) {
+            await logMessage("debug", `Puzzle state changed: ${args.puzzleId}`);
             const uri = getPuzzleResourceUri(args.puzzleId);
             if (subscriptions2.has(uri)) {
               const subscribers = subscriptions2.get(uri);
               for (const subscriber of subscribers) {
-                const transport = transports2.get(
-                  subscriber
-                );
-                await transport.send({
-                  jsonrpc: "2.0",
-                  method: "notifications/resources/updated",
-                  params: { uri }
-                });
+                if (transports2.has(subscriber)) {
+                  const transport = transports2.get(subscriber);
+                  await transport.send({
+                    jsonrpc: "2.0",
+                    method: "notifications/resources/updated",
+                    params: { uri }
+                  });
+                } else {
+                  subscribers.delete(subscriber);
+                  await logMessage("info", `Disconnected subscriber removed: ${subscriber}`);
+                }
               }
             }
           }
@@ -34446,16 +34465,20 @@ var createServer = (transports2, subscriptions2) => {
           };
         }
         default:
-          throw new Error(`Unknown tool: ${request.params.name}`);
+          await logMessage("error", `Unknown tool: ${request.params.name}`);
+          return {};
       }
     } catch (error) {
-      throw new Error(
+      await logMessage(
+        "error",
         `Error processing request: ${error instanceof Error ? error.message : "unknown error"}`
       );
+      return {};
     }
   });
   server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
     var _a, _b;
+    await logMessage("info", `Received List Resources request`);
     const PAGE_SIZE = 25;
     const cursor = (_a = request.params) == null ? void 0 : _a.cursor;
     let startIndex = 0;
@@ -34479,6 +34502,7 @@ var createServer = (transports2, subscriptions2) => {
     };
   });
   server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+    await logMessage("info", `Received List Resource Templates request`);
     return {
       resourceTemplates: [
         {
@@ -34492,6 +34516,7 @@ var createServer = (transports2, subscriptions2) => {
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     var _a;
     const uri = request.params.uri;
+    await logMessage("info", `Received Read Resource request: ${uri}`);
     if (uri.startsWith(PUZZLE_RESOURCE_PATH)) {
       console.log(`Received resource request: ${uri}`);
       const puzzleId = uri.split(PUZZLE_RESOURCE_PATH)[1];
@@ -34512,8 +34537,9 @@ var createServer = (transports2, subscriptions2) => {
   });
   server.setRequestHandler(SubscribeRequestSchema, async (request) => {
     var _a;
-    const sessionId = (_a = server == null ? void 0 : server.transport) == null ? void 0 : _a.sessionId;
     const { uri } = request.params;
+    await logMessage("info", `Received Subscribe Resource request: ${uri}`);
+    const sessionId = (_a = server == null ? void 0 : server.transport) == null ? void 0 : _a.sessionId;
     const subscribers = subscriptions2.has(uri) ? subscriptions2.get(uri) : /* @__PURE__ */ new Set();
     subscribers.add(sessionId);
     subscriptions2.set(uri, subscribers);
@@ -34522,11 +34548,18 @@ var createServer = (transports2, subscriptions2) => {
   server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
     var _a;
     const { uri } = request.params;
+    await logMessage("info", `Received Unsubscribe Resource request: ${uri}`);
     if (subscriptions2.has(uri)) {
       const sessionId = (_a = server == null ? void 0 : server.transport) == null ? void 0 : _a.sessionId;
       const subscribers = subscriptions2.get(uri);
       if (subscribers.has(sessionId)) subscribers.delete(sessionId);
     }
+    return {};
+  });
+  server.setRequestHandler(SetLevelRequestSchema, async (request) => {
+    const { level } = request.params;
+    logLevel = level;
+    await logMessage("info", `Received Set Log Level request: ${logLevel}`);
     return {};
   });
   return { server };
@@ -34542,6 +34575,9 @@ app.get("/sse", async (req, res) => {
   const transport = new SSEServerTransport("/message", res);
   const sessionId = transport.sessionId;
   transports.set(sessionId, transport);
+  res.on("close", () => {
+    transports.delete(sessionId);
+  });
   await server.connect(transport);
 });
 app.post("/message", async (req, res) => {

@@ -1,5 +1,5 @@
 import PuzzleStore from "../stores/PuzzleStore.ts";
-import { puzzleSchema } from "../common/schemas.ts";
+import { puzzleSchema, PuzzleConfig } from "../common/schemas.ts";
 import { ActionName, StateName } from "../common/types.ts";
 import { getPuzzleResourceUri } from "../common/utils.ts";
 
@@ -35,12 +35,10 @@ interface PerformActionOnPuzzlesResponse {
 /**
  * Add a puzzle to the puzzle box
  */
-export function addPuzzle(puzzleConfig: string): AddPuzzleResponse {
+export function addPuzzle(puzzleConfig: PuzzleConfig): AddPuzzleResponse {
   let response: AddPuzzleResponse = { success: false };
-  let parsed;
   try {
-    parsed = JSON.parse(puzzleConfig);
-    const config = puzzleSchema.safeParse(parsed);
+    const config = puzzleSchema.safeParse(puzzleConfig);
     if (config.success) {
       response.success = true;
       response.puzzleId = PuzzleStore.addPuzzle(config.data).id;

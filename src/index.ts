@@ -16,6 +16,9 @@ app.get("/sse", async (req, res) => {
   const transport = new SSEServerTransport("/message", res); // Create transport
   const sessionId = transport.sessionId; // Get the transport session id
   transports.set(sessionId, transport); // Store transport by session id
+  res.on("close", () => {
+    transports.delete(sessionId);
+  });
   await server.connect(transport); // Start transport
 });
 
