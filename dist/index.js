@@ -31693,6 +31693,10 @@ var ServerCapabilitiesSchema = z.object({
    */
   logging: z.optional(z.object({}).passthrough()),
   /**
+   * Present if the server supports sending completions to the client.
+   */
+  completions: z.optional(z.object({}).passthrough()),
+  /**
    * Present if the server offers any prompt templates.
    */
   prompts: z.optional(z.object({
@@ -31964,6 +31968,17 @@ var ImageContentSchema = z.object({
    */
   mimeType: z.string()
 }).passthrough();
+var AudioContentSchema = z.object({
+  type: z.literal("audio"),
+  /**
+   * The base64-encoded audio data.
+   */
+  data: z.string().base64(),
+  /**
+   * The MIME type of the audio. Different providers may support different audio types.
+   */
+  mimeType: z.string()
+}).passthrough();
 var EmbeddedResourceSchema = z.object({
   type: z.literal("resource"),
   resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema])
@@ -31973,6 +31988,7 @@ var PromptMessageSchema = z.object({
   content: z.union([
     TextContentSchema,
     ImageContentSchema,
+    AudioContentSchema,
     EmbeddedResourceSchema
   ])
 }).passthrough();
@@ -32010,7 +32026,7 @@ var ListToolsResultSchema = PaginatedResultSchema.extend({
   tools: z.array(ToolSchema)
 });
 var CallToolResultSchema = ResultSchema.extend({
-  content: z.array(z.union([TextContentSchema, ImageContentSchema, EmbeddedResourceSchema])),
+  content: z.array(z.union([TextContentSchema, ImageContentSchema, AudioContentSchema, EmbeddedResourceSchema])),
   isError: z.boolean().default(false).optional()
 });
 var CompatibilityCallToolResultSchema = CallToolResultSchema.or(ResultSchema.extend({
@@ -32088,7 +32104,7 @@ var ModelPreferencesSchema = z.object({
 }).passthrough();
 var SamplingMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  content: z.union([TextContentSchema, ImageContentSchema])
+  content: z.union([TextContentSchema, ImageContentSchema, AudioContentSchema])
 }).passthrough();
 var CreateMessageRequestSchema = RequestSchema.extend({
   method: z.literal("sampling/createMessage"),
@@ -32130,7 +32146,8 @@ var CreateMessageResultSchema = ResultSchema.extend({
   role: z.enum(["user", "assistant"]),
   content: z.discriminatedUnion("type", [
     TextContentSchema,
-    ImageContentSchema
+    ImageContentSchema,
+    AudioContentSchema
   ])
 });
 var ResourceReferenceSchema = z.object({
@@ -32286,7 +32303,7 @@ var SSEServerTransport = class {
     }
     this.res.writeHead(200, {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive"
     });
     this.res.write(`event: endpoint
@@ -33880,12 +33897,13 @@ var Protocol = class {
       (_request) => ({})
     );
   }
-  _setupTimeout(messageId, timeout, maxTotalTimeout, onTimeout) {
+  _setupTimeout(messageId, timeout, maxTotalTimeout, onTimeout, resetTimeoutOnProgress = false) {
     this._timeoutInfo.set(messageId, {
       timeoutId: setTimeout(onTimeout, timeout),
       startTime: Date.now(),
       timeout,
       maxTotalTimeout,
+      resetTimeoutOnProgress,
       onTimeout
     });
   }
@@ -34013,7 +34031,8 @@ var Protocol = class {
       return;
     }
     const responseHandler = this._responseHandlers.get(messageId);
-    if (this._timeoutInfo.has(messageId) && responseHandler) {
+    const timeoutInfo = this._timeoutInfo.get(messageId);
+    if (timeoutInfo && responseHandler && timeoutInfo.resetTimeoutOnProgress) {
       try {
         this._resetTimeout(messageId);
       } catch (error) {
@@ -34057,7 +34076,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     return new Promise((resolve, reject) => {
-      var _a, _b, _c, _d;
+      var _a, _b, _c, _d, _e;
       if (!this._transport) {
         reject(new Error("Not connected"));
         return;
@@ -34115,7 +34134,7 @@ var Protocol = class {
       });
       const timeout = (_d = options === null || options === void 0 ? void 0 : options.timeout) !== null && _d !== void 0 ? _d : DEFAULT_REQUEST_TIMEOUT_MSEC;
       const timeoutHandler = () => cancel(new McpError(ErrorCode.RequestTimeout, "Request timed out", { timeout }));
-      this._setupTimeout(messageId, timeout, options === null || options === void 0 ? void 0 : options.maxTotalTimeout, timeoutHandler);
+      this._setupTimeout(messageId, timeout, options === null || options === void 0 ? void 0 : options.maxTotalTimeout, timeoutHandler, (_e = options === null || options === void 0 ? void 0 : options.resetTimeoutOnProgress) !== null && _e !== void 0 ? _e : false);
       this._transport.send(jsonrpcRequest).catch((error) => {
         this._cleanupTimeout(messageId);
         reject(error);
@@ -34412,10 +34431,7 @@ var createServer = (transports2, subscriptions2) => {
     };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    await logMessage(
-      "info",
-      `Received Call Tool request: ${request.params.name}`
-    );
+    await logMessage("info", `Received Call Tool request: ${request.params.name}`);
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -34452,10 +34468,7 @@ var createServer = (transports2, subscriptions2) => {
                   });
                 } else {
                   subscribers.delete(subscriber);
-                  await logMessage(
-                    "info",
-                    `Disconnected subscriber removed: ${subscriber}`
-                  );
+                  await logMessage("info", `Disconnected subscriber removed: ${subscriber}`);
                 }
               }
             }

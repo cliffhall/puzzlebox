@@ -19,6 +19,7 @@
   "description": "",
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node-fetch": "^2.6.12",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
@@ -31,9 +32,8 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/inspector": "^0.7.0",
-    "@modelcontextprotocol/sdk": "^1.7.0",
-    "@types/express": "^5.0.0",
+    "@modelcontextprotocol/inspector": "^0.8.2",
+    "@modelcontextprotocol/sdk": "^1.9.0",
     "mcp-proxy": "^2.11.0",
     "node-fetch": "^2.7.0"
   }
