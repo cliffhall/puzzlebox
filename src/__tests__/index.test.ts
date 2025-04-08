@@ -1,15 +1,11 @@
-// --- START OF FILE src/__tests__/index.test.ts ---
-
 import http from 'http';
-// Removed 'net' import as it was unused
 import app from '../index.ts';
-import { AddressInfo } from 'net'; // Keep AddressInfo import
+import { AddressInfo } from 'net';
 
-// --- Type Definitions ---
 interface ToolDefinition {
   name: string;
   description: string;
-  inputSchema: object; // Or a more specific JSON Schema type if available/needed
+  inputSchema: object;
 }
 
 interface ToolsListResult {
@@ -23,7 +19,6 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
-// More specific type for the tools/list response promise
 interface ToolsListJsonResponse extends JsonRpcResponse {
   id: number; // Match our request id type
   result: ToolsListResult;
@@ -78,7 +73,7 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
 
       res.on('data', (chunk: string) => {
         if (promiseSettled) return;
-        // console.log(`SSE_HELPER: Received chunk: ${chunk.replace(/\n/g, '\\n')}`);
+        console.log(`SSE_HELPER: Received chunk: ${chunk.replace(/\n/g, '\\n')}`);
         buffer += chunk;
         let messageEndIndex;
         while (!promiseSettled && (messageEndIndex = buffer.indexOf('\n\n')) !== -1) {
@@ -90,12 +85,12 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
             if (eventType === 'endpoint' && eventData) {
               const match = eventData.match(/sessionId=([a-f0-9-]{36})$/);
               if (match && match[1]) {
-                // console.log(`SSE_HELPER: Extracted sessionId: ${match[1]}`);
+                console.log(`SSE_HELPER: Extracted sessionId: ${match[1]}`);
                 res.removeListener('close', prematureCloseHandler); res.removeListener('end', prematureCloseHandler);
                 cleanup(undefined, { sessionId: match[1], sseResponseStream: res });
               } else { cleanup(new Error(`Could not parse sessionId from endpoint data: ${eventData}`)); }
             } else {
-              // console.log(`SSE_HELPER: Ignoring message during setup: event=${eventType}`);
+              console.log(`SSE_HELPER: Ignoring message during setup: event=${eventType}`);
             }
           }
         }
@@ -123,8 +118,6 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
     clientRequest.end();
   });
 }
-// --- End Helper Function ---
-
 
 describe('Puzzlebox API', () => {
   let server: http.Server;
@@ -182,57 +175,52 @@ describe('Puzzlebox API', () => {
     const requestPayload = { method: "tools/list", params: {}, jsonrpc: "2.0", id: 5 };
     const requestBodyString = JSON.stringify(requestPayload);
 
-    // Fix: Use specific type for no-explicit-any
     const sseResponsePromise = new Promise<ToolsListJsonResponse>((resolveSse, rejectSse) => {
       let sseBuffer = '';
       const sseTimeout = setTimeout(() => rejectSse(new Error("Timeout waiting for tools/list response on SSE stream")), 7000);
 
       const dataHandler = (chunk: string) => {
-        // console.log(`MSG_TEST: SSE Stream received chunk: ${chunk.replace(/\n/g, '\\n')}`);
+        console.log(`MSG_TEST: SSE Stream received chunk: ${chunk.replace(/\n/g, '\\n')}`);
         sseBuffer += chunk;
         let messageEndIndex;
         while ((messageEndIndex = sseBuffer.indexOf('\n\n')) !== -1) {
           const message = sseBuffer.substring(0, messageEndIndex);
           sseBuffer = sseBuffer.substring(messageEndIndex + 2);
-          // console.log(`MSG_TEST: Processing SSE message block:\n${message}`);
 
+          console.log(`MSG_TEST: Processing SSE message block:\n${message}`);
           const lines = message.split('\n');
-          // Fix: Removed unused variable sseEventType
           let sseData: string | null = null;
-
           for (const line of lines) {
-            // Only parse data
             if (line.startsWith('data: ')) {
               sseData = line.substring(6).trim();
             }
           }
-          // console.log(`MSG_TEST: Parsed SSE - Data: ${sseData ? sseData.substring(0, 50) + '...' : 'null'}`);
+          console.log(`MSG_TEST: Parsed SSE - Data: ${sseData ? sseData.substring(0, 50) + '...' : 'null'}`);
 
           if (sseData) {
             try {
-              const parsed: JsonRpcResponse = JSON.parse(sseData); // Use base type first
+              const parsed: JsonRpcResponse = JSON.parse(sseData);
               if (typeof parsed === 'object' && parsed !== null && parsed.jsonrpc === "2.0" && parsed.id === requestPayload.id) {
                 console.log("MSG_TEST: Found matching JSON-RPC response in SSE data.");
                 clearTimeout(sseTimeout);
                 sseResponseStream.removeListener('data', dataHandler);
                 sseResponseStream.removeListener('error', errorHandler);
                 sseResponseStream.removeListener('close', closeHandler);
-                // Cast or validate before resolving if needed, but basic check is done
                 resolveSse(parsed as ToolsListJsonResponse);
                 return;
               } else if (typeof parsed === 'object' && parsed !== null && 'method' in parsed && typeof parsed.method === 'string' && parsed.method.startsWith('notifications/')) {
-                // console.log(`MSG_TEST: Ignoring SSE notification message: ${parsed.method}`);
+                console.log(`MSG_TEST: Ignoring SSE notification message: ${parsed.method}`);
               } else {
-                // console.log(`MSG_TEST: Ignoring SSE JSON data with different id/structure (id: ${parsed?.id})`);
+                console.log(`MSG_TEST: Ignoring SSE JSON data with different id/structure (id: ${parsed?.id})`);
               }
             } catch (e) {
               console.error("MSG_TEST: Failed to parse JSON from SSE data field:", sseData, e);
             }
           } else {
-            // console.log(`MSG_TEST: SSE message block did not contain a 'data:' field.`);
+            console.log(`MSG_TEST: SSE message block did not contain a 'data:' field.`);
           }
-        } // end while
-      }; // end dataHandler
+        }
+      };
 
       const errorHandler = (err: Error) => { console.error("MSG_TEST: Error on SSE stream while waiting for response:", err); clearTimeout(sseTimeout); rejectSse(err); };
       const closeHandler = () => { console.error("MSG_TEST: SSE stream closed while waiting for response"); clearTimeout(sseTimeout); rejectSse(new Error("SSE stream closed unexpectedly while waiting for response")); }
@@ -241,8 +229,8 @@ describe('Puzzlebox API', () => {
       sseResponseStream.on('data', dataHandler);
       sseResponseStream.once('error', errorHandler);
       sseResponseStream.once('close', closeHandler);
-      if (sseConn) sseConn.listenerAttached = true; // Check sseConn exists
-    }); // end sseResponsePromise
+      if (sseConn) sseConn.listenerAttached = true;
+    });
 
     // Promise for the POST request itself
     const postAckPromise = new Promise<void>((resolvePost, rejectPost) => {
@@ -270,7 +258,7 @@ describe('Puzzlebox API', () => {
       console.log("MSG_TEST: Writing POST request body...");
       clientRequest.write(requestBodyString);
       clientRequest.end();
-    }); // end postAckPromise
+    });
 
     // Wait for both the POST acknowledgement AND the response on the SSE stream
     console.log("MSG_TEST: Waiting for POST acknowledgement and SSE response...");
@@ -284,7 +272,6 @@ describe('Puzzlebox API', () => {
     expect(sseResult.result).toHaveProperty('tools');
     expect(Array.isArray(sseResult.result.tools)).toBe(true);
     expect(sseResult.result.tools.length).toBeGreaterThan(0);
-    // Fix: Use specific type in map callback for no-explicit-any
     const toolNames = sseResult.result.tools.map((t: ToolDefinition) => t.name);
     expect(toolNames).toEqual(expect.arrayContaining([
       "add_puzzle", "get_puzzle_snapshot", "perform_action_on_puzzle", "count_puzzles"
@@ -294,4 +281,3 @@ describe('Puzzlebox API', () => {
   }, 15000); // Jest timeout
 
 });
-// --- END OF FILE src/__tests__/index.test.ts ---

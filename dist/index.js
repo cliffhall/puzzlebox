@@ -34628,6 +34628,7 @@ app.get("/sse", async (req, res) => {
       }
     }
   }
+  console.log(`SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`);
 });
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
@@ -34635,7 +34636,6 @@ app.post("/message", async (req, res) => {
     const transport = transports.get(sessionId);
     try {
       await transport.handlePostMessage(req, res);
-      console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`);
     } catch (error) {
       console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error);
       if (!res.headersSent) {
@@ -34657,9 +34657,9 @@ if (process.env.NODE_ENV !== "test") {
   });
 }
 process.on("SIGTERM", () => {
-  console.log("SIGTERM signal received: closing HTTP server");
+  console.log("SIGTERM signal received: closing server");
   runningServer == null ? void 0 : runningServer.close(() => {
-    console.log("HTTP server closed");
+    console.log("Server closed");
   });
 });
 var index_default = app;
