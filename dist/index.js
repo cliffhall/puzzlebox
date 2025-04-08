@@ -8,6 +8,10 @@ var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -24,6 +28,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/bytes/index.js
 var require_bytes = __commonJS({
@@ -27486,6 +27491,13 @@ var require_express2 = __commonJS({
   }
 });
 
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  default: () => index_default
+});
+module.exports = __toCommonJS(index_exports);
+
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/sse.js
 var import_node_crypto = require("node:crypto");
 
@@ -34594,22 +34606,65 @@ app.get("/sse", async (req, res) => {
   const transport = new SSEServerTransport("/message", res);
   const sessionId = transport.sessionId;
   transports.set(sessionId, transport);
+  let closed = false;
   res.on("close", () => {
+    if (closed) return;
+    closed = true;
+    console.log(`SERVER_LOG: Connection closed for sessionId: ${sessionId}`);
     transports.delete(sessionId);
   });
-  await server.connect(transport);
-});
-app.post("/message", async (req, res) => {
-  const sessionId = req.query.sessionId;
-  if (req.query.sessionId && transports.has(sessionId)) {
-    const transport = transports.get(sessionId);
-    await transport.handlePostMessage(req, res);
+  try {
+    await server.connect(transport);
+    await new Promise((resolve) => setImmediate(resolve));
+  } catch (error) {
+    console.error(`SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`, error);
+    if (!closed) {
+      transports.delete(sessionId);
+      if (!res.headersSent) {
+        console.error(`SERVER_LOG: Sending 500 due to connect error.`);
+        res.status(500).send("Internal Server Error during connection setup");
+      } else if (!res.writableEnded) {
+        console.error(`SERVER_LOG: Ending response due to connect error after headers sent.`);
+        res.end();
+      }
+    }
   }
 });
-var PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.post("/message", async (req, res) => {
+  console.log(`SERVER_LOG: POST /message received for sessionId: ${req.query.sessionId}`);
+  const sessionId = req.query.sessionId;
+  if (sessionId && transports.has(sessionId)) {
+    const transport = transports.get(sessionId);
+    try {
+      await transport.handlePostMessage(req, res);
+      console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`);
+    } catch (error) {
+      console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error);
+      if (!res.headersSent) {
+        res.status(500).send("Error handling message");
+      } else if (!res.writableEnded) {
+        res.end();
+      }
+    }
+  } else {
+    console.warn(`SERVER_LOG: POST /message received for unknown/missing sessionId: ${sessionId}`);
+    res.status(404).send("Session not found");
+  }
 });
+var runningServer = null;
+if (process.env.NODE_ENV !== "test") {
+  const PORT = process.env.PORT || 3001;
+  runningServer = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing HTTP server");
+  runningServer == null ? void 0 : runningServer.close(() => {
+    console.log("HTTP server closed");
+  });
+});
+var index_default = app;
 /*! Bundled license information:
 
 bytes/index.js:

@@ -25,8 +25,8 @@ import {
   getPuzzleList,
 } from "./tools/puzzles.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { PUZZLE_RESOURCE_PATH, getPuzzleResourceUri } from "./common/utils.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { PUZZLE_RESOURCE_PATH, getPuzzleResourceUri } from "./common/utils.ts";
 
 export const createServer = (
   transports: Map<string, Transport>,
