@@ -68,10 +68,11 @@ app.post("/message", async (req, res) => {
     // Only handle requests with an established session
     const transport = transports.get(sessionId) as SSEServerTransport; // Get the transport for the session
     try {
-      await transport.handlePostMessage(req, res); // Handle the posted message
-      // console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`); // Added Log
+      await transport.handlePostMessage(req, res);
+      // console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`);
     } catch (error) {
-      //console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error); // Added Log
+      // This log USES the 'error' variable, so disable the rule for this line
+      console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error);
       if (!res.headersSent) {
         res.status(500).send('Error handling message');
       } else if (!res.writableEnded) {

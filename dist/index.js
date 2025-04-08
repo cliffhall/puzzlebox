@@ -34630,7 +34630,6 @@ app.get("/sse", async (req, res) => {
   }
 });
 app.post("/message", async (req, res) => {
-  console.log(`SERVER_LOG: POST /message received for sessionId: ${req.query.sessionId}`);
   const sessionId = req.query.sessionId;
   if (sessionId && transports.has(sessionId)) {
     const transport = transports.get(sessionId);
