@@ -2,215 +2,213 @@ import http from 'http';
 import app from '../index.ts';
 import { AddressInfo } from 'net';
 
-describe('GET /sse', () => {
+// --- Store active SSE connections (Response Streams) ---
+interface ActiveSseConnection {
+  request: http.ClientRequest;
+  response: http.IncomingMessage;
+  listenerAttached: boolean; // To avoid duplicate listeners
+}
+const activeSseConnections: Map<string, ActiveSseConnection> = new Map();
+
+// --- Helper Function: Establish SSE, get Session ID & Response Stream ---
+async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessionId: string; sseResponseStream: http.IncomingMessage }> {
+  return new Promise((resolve, reject) => {
+    let buffer = '';
+    let clientRequest: http.ClientRequest | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let promiseSettled = false;
+
+    const cleanup = (err?: Error, details?: { sessionId: string; sseResponseStream: http.IncomingMessage }) => {
+      if (promiseSettled) return;
+      promiseSettled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (err && clientRequest && !clientRequest.destroyed) { /* ... destroy on error ... */ clientRequest.destroy(err); reject(err); }
+      else if (details?.sessionId && details?.sseResponseStream && clientRequest) { /* ... store and resolve ... */
+        activeSseConnections.set(details.sessionId, { request: clientRequest, response: details.sseResponseStream, listenerAttached: false });
+        resolve(details);
+      } else if (err) { /* ... reject on other errors ... */ reject(err); }
+      else { /* ... reject on unexpected state ... */ reject(new Error("SSE cleanup called in unexpected state")); }
+    };
+
+    const options: http.RequestOptions = { hostname: serverAddress.address === '::' ? 'localhost' : serverAddress.address, port: serverAddress.port, path: '/sse', method: 'GET', headers: { 'Accept': 'text/event-stream', 'Connection': 'keep-alive' } };
+    clientRequest = http.request(options, (res: http.IncomingMessage) => {
+      if (res.statusCode !== 200) { /* ... error handling ... */ cleanup(new Error(`SSE connection failed with status ${res.statusCode}`)); res.resume(); return; }
+      const prematureCloseHandler = () => { !promiseSettled && cleanup(new Error("SSE stream closed prematurely")); }
+      res.once('close', prematureCloseHandler); res.once('end', prematureCloseHandler);
+      res.setEncoding('utf8');
+      res.on('data', (chunk: string) => {
+        if (promiseSettled) return;
+        buffer += chunk;
+        let messageEndIndex;
+        while (!promiseSettled && (messageEndIndex = buffer.indexOf('\n\n')) !== -1) {
+          const message = buffer.substring(0, messageEndIndex);
+          buffer = buffer.substring(messageEndIndex + 2);
+          if (!promiseSettled) { // Check again after consuming buffer
+            const lines = message.split('\n'); let eventType: string | null = null; let eventData: string | null = null;
+            for (const line of lines) { if (line.startsWith('event: ')) eventType = line.substring(7).trim(); else if (line.startsWith('data: ')) eventData = line.substring(6).trim(); }
+            if (eventType === 'endpoint' && eventData) {
+              const match = eventData.match(/sessionId=([a-f0-9-]{36})$/);
+              if (match && match[1]) {
+                res.removeListener('close', prematureCloseHandler); res.removeListener('end', prematureCloseHandler);
+                cleanup(undefined, { sessionId: match[1], sseResponseStream: res });
+              } else { cleanup(new Error(`Could not parse sessionId from endpoint data: ${eventData}`)); }
+            }
+          }
+        }
+      });
+      res.on('error', (err) => { /* ... error handling ... */ !promiseSettled && cleanup(err); });
+    });
+    clientRequest.on('error', (err) => { /* ... error handling ... */ !promiseSettled && cleanup(err); });
+    timeoutId = setTimeout(() => { cleanup(new Error("Timeout waiting for SSE endpoint event")); }, 5000);
+    clientRequest.end();
+  });
+}
+// --- End Helper Function ---
+
+
+describe('Puzzlebox API', () => {
   let server: http.Server;
   let serverAddress: AddressInfo;
 
-  beforeAll((done) => {
+  beforeAll((done) => { /* ... same setup ... */
     server = http.createServer(app);
     server.listen(() => {
       const addr = server.address();
-      if (!addr || typeof addr === 'string') {
-        done(new Error("Server address is not an AddressInfo object")); // Pass error to done
-        return;
-      }
+      if (!addr || typeof addr === 'string') { done(new Error("Server address is not an AddressInfo object")); return; }
       serverAddress = addr;
       // console.log(`TEST_LOG: Test server listening on: http://localhost:${serverAddress.port}`);
       done();
     });
-    server.on('error', (err: Error) => {
-      // console.error('TEST_LOG: Test server error:', err);
-      // Optional: Fail tests if server has unexpected error during run
-      // throw err;
+    server.on('error', (err) => { console.error('TEST_LOG: Test server error:', err); });
+  });
+
+  afterEach(() => { /* ... same cleanup ... */
+    // console.log(`TEST_LOG: Cleaning up ${activeSseConnections.size} active SSE connections...`);
+    activeSseConnections.forEach((conn, sessionId) => {
+      if (conn.request && !conn.request.destroyed) {
+        // console.log(`TEST_LOG: Destroying active SSE request for sessionId: ${sessionId}`);
+        conn.request.destroy();
+      }
+      if (conn.response) { conn.response.removeAllListeners(); }
     });
+    activeSseConnections.clear();
   });
 
-  afterAll((done) => {
-    if (server) {
-      server.close((err) => {
-        if (err) {
-          // console.error("TEST_LOG: Error closing test server:", err);
-        } else {
-          // console.log("TEST_LOG: Test server closed.");
-        }
-        done(err);
-      });
-    } else {
-      done();
-    }
+  afterAll((done) => { /* ... same teardown ... */
+    activeSseConnections.forEach((conn) => { if (conn.request && !conn.request.destroyed) conn.request.destroy(); });
+    activeSseConnections.clear();
+    if (server) { server.close((err) => { /* ... */ done(err); }); }
+    else { done(); }
   });
 
+  // --- GET /sse test ---
+  it('GET /sse should establish a session', async () => {
+    const { sessionId, sseResponseStream } = await establishSseSession(serverAddress);
+    expect(sessionId).toMatch(/^[a-f0-9-]{36}$/);
+    expect(sseResponseStream).toBeDefined();
+    expect(activeSseConnections.has(sessionId)).toBe(true);
+  }, 10000);
 
-  it('should receive the "endpoint" SSE event using http.request', async () => {
-    if (!serverAddress) {
-      throw new Error('Server address not available');
-    }
+  // --- POST /message test ---
+  it('POST /message should trigger response on SSE stream for tools/list', async () => {
+    if (!serverAddress) throw new Error('Server address not available'); // Uses serverAddress
 
-    await new Promise<void>((resolve, reject) => {
-      let buffer = '';
-      let clientRequest: http.ClientRequest | null = null;
-      let timeoutId: NodeJS.Timeout | null = null;
-      // --- FIX: Add flag to track promise state ---
-      let promiseSettled = false;
+    // console.log("MSG_TEST: Establishing SSE session...");
+    const { sessionId, sseResponseStream } = await establishSseSession(serverAddress); // Uses establishSseSession, serverAddress
+    // console.log(`MSG_TEST: SSE session established: ${sessionId}`);
+    const sseConn = activeSseConnections.get(sessionId); // Uses activeSseConnections
+    if (!sseConn) throw new Error("SSE connection details not found in map");
 
-      const cleanup = (err?: Error) => {
-        // --- FIX: Prevent multiple cleanup calls ---
-        if (promiseSettled) {
-          // console.log("TEST_LOG: Cleanup called but promise already settled.");
-          return;
-        }
-        promiseSettled = true; // Mark as settled immediately
-        // --- End Fix ---
+    const requestPayload = { method: "tools/list", params: {}, jsonrpc: "2.0", id: 5 }; // Use a unique ID
+    const requestBodyString = JSON.stringify(requestPayload);
 
-        if (timeoutId) clearTimeout(timeoutId);
+    // Promise to wait for the correct response on the SSE stream
+    const sseResponsePromise = new Promise<any>((resolveSse, rejectSse) => {
+      let sseBuffer = '';
+      const sseTimeout = setTimeout(() => rejectSse(new Error("Timeout waiting for tools/list response on SSE stream")), 7000);
 
-        // Ensure clientRequest exists and hasn't been destroyed before destroying
-        if (clientRequest && !clientRequest.destroyed) {
-          // console.log(`TEST_LOG: Destroying request in cleanup ${err ? 'due to error' : 'after success'}.`);
-          // Pass the error to destroy ONLY if we are cleaning up due to an error
-          clientRequest.destroy(err);
-        } else if (clientRequest?.destroyed) {
-          // console.log("TEST_LOG: Request already destroyed when cleanup called.");
-        } else {
-          // console.log("TEST_LOG: Client request reference missing in cleanup.");
-        }
+      const dataHandler = (chunk: string) => {
+        // // console.log(`MSG_TEST: SSE Stream received chunk: ${chunk.replace(/\n/g, '\\n')}`); // Reduce noise
+        sseBuffer += chunk;
+        let messageEndIndex;
+        while ((messageEndIndex = sseBuffer.indexOf('\n\n')) !== -1) {
+          const message = sseBuffer.substring(0, messageEndIndex);
+          sseBuffer = sseBuffer.substring(messageEndIndex + 2);
+          // // console.log(`MSG_TEST: Processing SSE message block:\n${message}`); // Reduce noise
 
-        if (err) {
-          // console.error("TEST_LOG: Rejecting promise.", err.message);
-          reject(err);
-        } else {
-          // console.log("TEST_LOG: Resolving promise.");
-          resolve();
-        }
-      };
+          const lines = message.split('\n'); let sseEventType: string | null = null; let sseData: string | null = null;
+          for (const line of lines) { if (line.startsWith('event: ')) { sseEventType = line.substring(7).trim(); } else if (line.startsWith('data: ')) { sseData = line.substring(6).trim(); } }
+          // // console.log(`MSG_TEST: Parsed SSE - Event: ${sseEventType}, Data: ${sseData ? sseData.substring(0, 50) + '...' : 'null'}`); // Reduce noise
 
+          if (sseData) {
+            try {
+              const parsed = JSON.parse(sseData);
+              if (parsed.jsonrpc === "2.0" && parsed.id === requestPayload.id) {
+                // console.log("MSG_TEST: Found matching JSON-RPC response in SSE data.");
+                clearTimeout(sseTimeout);
+                sseResponseStream.removeListener('data', dataHandler); sseResponseStream.removeListener('error', errorHandler); sseResponseStream.removeListener('close', closeHandler);
+                resolveSse(parsed);
+                return;
+              } else if (parsed.jsonrpc === "2.0" && parsed.method?.startsWith('notifications/')) { /* Ignore notifications */ }
+              else { /* Ignore other JSON */ }
+            } catch (e) { console.error("MSG_TEST: Failed to parse JSON from SSE data field:", sseData, e); }
+          }
+        } // end while
+      }; // end dataHandler
+
+      const errorHandler = (err: Error) => { /* ... same error handler ... */ console.error("MSG_TEST: Error on SSE stream while waiting for response:", err); clearTimeout(sseTimeout); rejectSse(err); };
+      const closeHandler = () => { /* ... same close handler ... */ console.error("MSG_TEST: SSE stream closed while waiting for response"); clearTimeout(sseTimeout); rejectSse(new Error("SSE stream closed unexpectedly while waiting for response")); };
+
+      // console.log("MSG_TEST: Attaching listener to SSE stream...");
+      sseResponseStream.on('data', dataHandler); sseResponseStream.once('error', errorHandler); sseResponseStream.once('close', closeHandler);
+      sseConn.listenerAttached = true;
+    }); // end sseResponsePromise
+
+    const postAckPromise = new Promise<void>((resolvePost, rejectPost) => {
       const options: http.RequestOptions = {
         hostname: serverAddress.address === '::' ? 'localhost' : serverAddress.address,
-        port: serverAddress.port,
-        path: '/sse',
-        method: 'GET',
-        headers: {
-          'Accept': 'text/event-stream',
-          'Connection': 'keep-alive'
-        }
+        port: serverAddress.port, path: `/message?sessionId=${sessionId}`, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Content-Length': Buffer.byteLength(requestBodyString) }
       };
+      let postTimeout = setTimeout(() => rejectPost(new Error("Timeout waiting for POST /message acknowledgement")), 5000);
 
-      // console.log(`TEST_LOG: Creating http.request to http://${options.hostname}:${options.port}${options.path}`);
-
-      clientRequest = http.request(options, (res: http.IncomingMessage) => {
-        // console.log(`TEST_LOG: Response received. Status: ${res.statusCode}, Headers: ${JSON.stringify(res.headers)}`);
-
-        if (res.statusCode !== 200) {
-          cleanup(new Error(`Expected status code 200 but got ${res.statusCode}`));
+      // console.log(`MSG_TEST: Creating http.request POST to http://${options.hostname}:${options.port}${options.path}`);
+      const clientRequest = http.request(options, (res) => {
+        clearTimeout(postTimeout);
+        // console.log(`MSG_TEST: POST Response received. Status: ${res.statusCode}`);
+        if (res.statusCode === 202) {
+          // console.log("MSG_TEST: Received expected 202 Accepted for POST.");
           res.resume();
-          return;
+          resolvePost();
+        } else {
+          rejectPost(new Error(`POST /message expected status 202 but got ${res.statusCode}`));
+          res.resume();
         }
-        // Add more header checks if needed
-
-        res.setEncoding('utf8');
-
-        res.on('data', (chunk: string) => {
-          if (promiseSettled) return; // Ignore data after cleanup started
-          // console.log(`TEST_LOG: <<< RAW DATA CHUNK RECEIVED (${chunk.length} chars) >>>\n${chunk}\n<<< END RAW CHUNK >>>`);
-          buffer += chunk;
-          // console.log(`TEST_LOG: Current buffer: [${buffer.replace(/\n/g, '\\n')}]`);
-
-          let eventType: string | null = null;
-          let eventData: string | null = null;
-
-          let messageEndIndex;
-          while (!promiseSettled && (messageEndIndex = buffer.indexOf('\n\n')) !== -1) {
-            const message = buffer.substring(0, messageEndIndex);
-            buffer = buffer.substring(messageEndIndex + 2);
-            // console.log(`TEST_LOG: Processing message: [${message.replace(/\n/g, '\\n')}] Remaining buffer: [${buffer.replace(/\n/g, '\\n')}]`);
-
-            const lines = message.split('\n');
-            eventType = null;
-            eventData = null;
-
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                eventType = line.substring(7).trim();
-              } else if (line.startsWith('data: ')) {
-                eventData = line.substring(6).trim();
-              }
-            }
-            // console.log(`TEST_LOG: Parsed - Event: ${eventType}, Data: ${eventData}`);
-
-            if (eventType === 'endpoint') {
-              // console.log('TEST_LOG: Found "endpoint" event!');
-              try {
-                expect(eventType).toBe('endpoint');
-                expect(eventData).toMatch(/^\/message\?sessionId=[a-f0-9-]{36}$/);
-                // console.log('TEST_LOG: Assertions passed.');
-                cleanup(); // Resolve successfully
-                // No return needed here as the promiseSettled flag handles subsequent calls
-              } catch (assertionError) {
-                // console.error('TEST_LOG: Assertion failed.');
-                cleanup(assertionError as Error); // Reject with assertion error
-              }
-            } //else {
-              // console.log('TEST_LOG: Received event other than "endpoint", continuing...');
-            // }
-          } // end while
-
-          if (!promiseSettled && buffer.length > 0) {
-            // console.log(`TEST_LOG: Partial message in buffer, waiting for more data...`);
-          }
-        }); // End res.on('data')
-
-        res.on('error', (err: Error) => {
-          // --- FIX: Ignore errors after promise settled, especially expected abort errors ---
-          if (promiseSettled && (err.message === 'aborted' || (err as NodeJS.ErrnoException).code === 'ECONNRESET')) {
-            // console.log(`TEST_LOG: Ignoring expected response stream error after request destroyed: ${err.message}`);
-            return;
-          }
-          if (promiseSettled) return; // Ignore other errors too if already settled
-          // --- End Fix ---
-          // console.error('TEST_LOG: Unexpected response stream error:', err);
-          cleanup(err);
-        });
-
-        res.on('close', () => {
-          // console.log("TEST_LOG: Response stream closed.");
-          // Optional: If close happens before success/error, trigger failure.
-          // if (!promiseSettled) {
-          //    cleanup(new Error("Stream closed unexpectedly before finding event or timeout"));
-          // }
-        });
-
-        res.on('end', () => {
-          // console.log("TEST_LOG: Response stream ended.");
-          if (!promiseSettled) {
-            cleanup(new Error("Stream ended unexpectedly before finding event"));
-          }
-        });
-
-      }); // End http.request callback
-
-      clientRequest.on('error', (err: Error) => {
-        // --- FIX: Check promiseSettled here too ---
-        if (promiseSettled && (err.message === 'socket hang up' || (err as NodeJS.ErrnoException).code === 'ECONNRESET')) {
-          // console.log(`TEST_LOG: Ignoring expected request error after request destroyed: ${err.message}`);
-          return;
-        }
-        if (promiseSettled) return;
-        // --- End Fix ---
-        // console.error('TEST_LOG: Request initiation error:', err);
-        cleanup(err);
       });
+      clientRequest.on('error', (err) => { clearTimeout(postTimeout); rejectPost(err); });
+      // console.log("MSG_TEST: Writing POST request body...");
+      clientRequest.write(requestBodyString);
+      clientRequest.end();
+    }); // end postAckPromise
 
-      // console.log("TEST_LOG: Setting timeout...");
-      timeoutId = setTimeout(() => {
-        // --- FIX: Check promiseSettled before timing out ---
-        if (promiseSettled) return;
-        // console.error('TEST_LOG: Timeout! Waiting for "endpoint" SSE event expired.');
-        cleanup(new Error('Test timed out waiting for "endpoint" SSE event'));
-      }, 7000); // Timeout
+    // Wait for both the POST acknowledgement AND the response on the SSE stream
+    // console.log("MSG_TEST: Waiting for POST acknowledgement and SSE response...");
+    const [, sseResult] = await Promise.all([postAckPromise, sseResponsePromise]); // Uses postAckPromise
+    // console.log("MSG_TEST: Both POST acknowledged and SSE response received.");
 
-      // console.log("TEST_LOG: Ending http.request (sending it)...");
-      clientRequest.end(); // Send the request
+    // Assertions on the SSE response result
+    expect(sseResult).toHaveProperty('jsonrpc', '2.0');
+    expect(sseResult).toHaveProperty('id', requestPayload.id);
+    expect(sseResult).toHaveProperty('result');
+    expect(sseResult.result).toHaveProperty('tools');
+    expect(Array.isArray(sseResult.result.tools)).toBe(true);
+    expect(sseResult.result.tools.length).toBeGreaterThan(0);
+    const toolNames = sseResult.result.tools.map((t: any) => t.name);
+    expect(toolNames).toEqual(expect.arrayContaining([
+      "add_puzzle", "get_puzzle_snapshot", "perform_action_on_puzzle", "count_puzzles"
+    ]));
+    // console.log("MSG_TEST: Assertions passed for SSE response content.");
 
-    }); // End of new Promise
-  }, 10000); // Jest timeout
+  }, 15000); // Jest timeout
+
 });

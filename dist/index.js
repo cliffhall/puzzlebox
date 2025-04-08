@@ -34610,7 +34610,6 @@ app.get("/sse", async (req, res) => {
   res.on("close", () => {
     if (closed) return;
     closed = true;
-    console.log(`SERVER_LOG: Connection closed for sessionId: ${sessionId}`);
     transports.delete(sessionId);
   });
   try {

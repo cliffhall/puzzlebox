@@ -62,16 +62,16 @@ app.get("/sse", async (req, res) => {
 
 // Connected clients post messages here
 app.post("/message", async (req, res) => {
-  console.log(`SERVER_LOG: POST /message received for sessionId: ${req.query.sessionId}`); // Added Log
+  // console.log(`SERVER_LOG: POST /message received for sessionId: ${req.query.sessionId}`); // Added Log
   const sessionId = req.query.sessionId as string; // Get the session id
   if (sessionId && transports.has(sessionId)) {
     // Only handle requests with an established session
     const transport = transports.get(sessionId) as SSEServerTransport; // Get the transport for the session
     try {
       await transport.handlePostMessage(req, res); // Handle the posted message
-      console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`); // Added Log
+      // console.log(`SERVER_LOG: Handled POST /message for sessionId: ${sessionId}`); // Added Log
     } catch (error) {
-      console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error); // Added Log
+      //console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error); // Added Log
       if (!res.headersSent) {
         res.status(500).send('Error handling message');
       } else if (!res.writableEnded) {
