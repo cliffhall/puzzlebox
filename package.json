@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint src",
     "lint:fix": "eslint ./src --fix",
-    "test": "jest --coverage"
+    "test": "jest --silent",
+    "coverage":  "jest --coverage"
   },
   "files": [
     "dist"
@@ -34,7 +35,10 @@
   "dependencies": {
     "@modelcontextprotocol/inspector": "^0.8.2",
     "@modelcontextprotocol/sdk": "^1.9.0",
+    "@types/supertest": "^6.0.3",
     "mcp-proxy": "^2.11.0",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "tsx": "^4.16.5",
+    "supertest": "^7.1.0"
   }
 }
