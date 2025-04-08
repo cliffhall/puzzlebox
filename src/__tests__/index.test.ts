@@ -19,8 +19,8 @@ interface ToolsListResult {
 interface JsonRpcResponse {
   jsonrpc: "2.0";
   id: number | string | null;
-  result?: unknown; // Use unknown instead of any
-  error?: { code: number; message: string; data?: unknown }; // Use unknown instead of any
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
 }
 
 // More specific type for the tools/list response promise
@@ -50,11 +50,11 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
       promiseSettled = true;
       if (timeoutId) clearTimeout(timeoutId);
       if (err && clientRequest && !clientRequest.destroyed) {
-        // console.log("SSE_HELPER: Destroying SSE request due to error.");
+        console.log("SSE_HELPER: Destroying SSE request due to error.");
         clientRequest.destroy(err);
         reject(err);
       } else if (details?.sessionId && details?.sseResponseStream && clientRequest) {
-        // console.log(`SSE_HELPER: Resolving with sessionId ${details.sessionId}. Keeping connection open.`);
+        console.log(`SSE_HELPER: Resolving with sessionId ${details.sessionId}. Keeping connection open.`);
         activeSseConnections.set(details.sessionId, { request: clientRequest, response: details.sseResponseStream, listenerAttached: false });
         resolve(details);
       } else if (err) {
@@ -67,9 +67,9 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
 
     const options: http.RequestOptions = { hostname: serverAddress.address === '::' ? 'localhost' : serverAddress.address, port: serverAddress.port, path: '/sse', method: 'GET', headers: { 'Accept': 'text/event-stream', 'Connection': 'keep-alive' } };
 
-    // console.log("SSE_HELPER: Creating http.request for SSE connection...");
+    console.log("SSE_HELPER: Creating http.request for SSE connection...");
     clientRequest = http.request(options, (res: http.IncomingMessage) => {
-      // console.log(`SSE_HELPER: Response received. Status: ${res.statusCode}`);
+      console.log(`SSE_HELPER: Response received. Status: ${res.statusCode}`);
       if (res.statusCode !== 200) { cleanup(new Error(`SSE connection failed with status ${res.statusCode}`)); res.resume(); return; }
 
       const prematureCloseHandler = () => { if (!promiseSettled) cleanup(new Error("SSE stream closed prematurely")); }
@@ -78,7 +78,7 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
 
       res.on('data', (chunk: string) => {
         if (promiseSettled) return;
-        // // console.log(`SSE_HELPER: Received chunk: ${chunk.replace(/\n/g, '\\n')}`);
+        // console.log(`SSE_HELPER: Received chunk: ${chunk.replace(/\n/g, '\\n')}`);
         buffer += chunk;
         let messageEndIndex;
         while (!promiseSettled && (messageEndIndex = buffer.indexOf('\n\n')) !== -1) {
@@ -90,12 +90,12 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
             if (eventType === 'endpoint' && eventData) {
               const match = eventData.match(/sessionId=([a-f0-9-]{36})$/);
               if (match && match[1]) {
-                // // console.log(`SSE_HELPER: Extracted sessionId: ${match[1]}`);
+                // console.log(`SSE_HELPER: Extracted sessionId: ${match[1]}`);
                 res.removeListener('close', prematureCloseHandler); res.removeListener('end', prematureCloseHandler);
                 cleanup(undefined, { sessionId: match[1], sseResponseStream: res });
               } else { cleanup(new Error(`Could not parse sessionId from endpoint data: ${eventData}`)); }
             } else {
-              // // console.log(`SSE_HELPER: Ignoring message during setup: event=${eventType}`);
+              // console.log(`SSE_HELPER: Ignoring message during setup: event=${eventType}`);
             }
           }
         }
@@ -119,7 +119,7 @@ async function establishSseSession(serverAddress: AddressInfo): Promise<{ sessio
     });
 
     timeoutId = setTimeout(() => { cleanup(new Error("Timeout waiting for SSE endpoint event")); }, 5000);
-    // console.log("SSE_HELPER: Ending http.request (sending)...");
+    console.log("SSE_HELPER: Ending http.request (sending)...");
     clientRequest.end();
   });
 }
@@ -136,18 +136,17 @@ describe('Puzzlebox API', () => {
       const addr = server.address();
       if (!addr || typeof addr === 'string') { done(new Error("Server address is not an AddressInfo object")); return; }
       serverAddress = addr;
-      // console.log(`TEST_LOG: Test server listening on: http://localhost:${serverAddress.port}`);
+      console.log(`TEST_LOG: Test server listening on: http://localhost:${serverAddress.port}`);
       done();
     });
     server.on('error', (err) => { console.error('TEST_LOG: Test server error:', err); });
   });
 
   afterEach(() => {
-    // console.log(`TEST_LOG: Cleaning up ${activeSseConnections.size} active SSE connections...`);
-    // Fix: Prefix unused sessionId with underscore for no-unused-vars
+    console.log(`TEST_LOG: Cleaning up ${activeSseConnections.size} active SSE connections...`);
     activeSseConnections.forEach((conn, _sessionId) => {
       if (conn.request && !conn.request.destroyed) {
-        // console.log(`TEST_LOG: Destroying active SSE request for sessionId: ${_sessionId}`);
+        console.log(`TEST_LOG: Destroying active SSE request for sessionId: ${_sessionId}`);
         conn.request.destroy();
       }
       if (conn.response) {
@@ -164,7 +163,6 @@ describe('Puzzlebox API', () => {
     else { done(); }
   });
 
-  // --- GET /sse test ---
   it('GET /sse should establish a session', async () => {
     const { sessionId, sseResponseStream } = await establishSseSession(serverAddress);
     expect(sessionId).toMatch(/^[a-f0-9-]{36}$/);
@@ -172,13 +170,12 @@ describe('Puzzlebox API', () => {
     expect(activeSseConnections.has(sessionId)).toBe(true);
   }, 10000);
 
-  // --- POST /message test ---
   it('POST /message should trigger response on SSE stream for tools/list', async () => {
     if (!serverAddress) throw new Error('Server address not available');
 
-    // console.log("MSG_TEST: Establishing SSE session...");
+    console.log("MSG_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(serverAddress);
-    // console.log(`MSG_TEST: SSE session established: ${sessionId}`);
+    console.log(`MSG_TEST: SSE session established: ${sessionId}`);
     const sseConn = activeSseConnections.get(sessionId);
     if (!sseConn) throw new Error("SSE connection details not found in map");
 
@@ -191,13 +188,13 @@ describe('Puzzlebox API', () => {
       const sseTimeout = setTimeout(() => rejectSse(new Error("Timeout waiting for tools/list response on SSE stream")), 7000);
 
       const dataHandler = (chunk: string) => {
-        // // console.log(`MSG_TEST: SSE Stream received chunk: ${chunk.replace(/\n/g, '\\n')}`);
+        // console.log(`MSG_TEST: SSE Stream received chunk: ${chunk.replace(/\n/g, '\\n')}`);
         sseBuffer += chunk;
         let messageEndIndex;
         while ((messageEndIndex = sseBuffer.indexOf('\n\n')) !== -1) {
           const message = sseBuffer.substring(0, messageEndIndex);
           sseBuffer = sseBuffer.substring(messageEndIndex + 2);
-          // // console.log(`MSG_TEST: Processing SSE message block:\n${message}`);
+          // console.log(`MSG_TEST: Processing SSE message block:\n${message}`);
 
           const lines = message.split('\n');
           // Fix: Removed unused variable sseEventType
@@ -209,13 +206,13 @@ describe('Puzzlebox API', () => {
               sseData = line.substring(6).trim();
             }
           }
-          // // console.log(`MSG_TEST: Parsed SSE - Data: ${sseData ? sseData.substring(0, 50) + '...' : 'null'}`);
+          // console.log(`MSG_TEST: Parsed SSE - Data: ${sseData ? sseData.substring(0, 50) + '...' : 'null'}`);
 
           if (sseData) {
             try {
               const parsed: JsonRpcResponse = JSON.parse(sseData); // Use base type first
               if (typeof parsed === 'object' && parsed !== null && parsed.jsonrpc === "2.0" && parsed.id === requestPayload.id) {
-                // console.log("MSG_TEST: Found matching JSON-RPC response in SSE data.");
+                console.log("MSG_TEST: Found matching JSON-RPC response in SSE data.");
                 clearTimeout(sseTimeout);
                 sseResponseStream.removeListener('data', dataHandler);
                 sseResponseStream.removeListener('error', errorHandler);
@@ -224,15 +221,15 @@ describe('Puzzlebox API', () => {
                 resolveSse(parsed as ToolsListJsonResponse);
                 return;
               } else if (typeof parsed === 'object' && parsed !== null && 'method' in parsed && typeof parsed.method === 'string' && parsed.method.startsWith('notifications/')) {
-                // // console.log(`MSG_TEST: Ignoring SSE notification message: ${parsed.method}`);
+                // console.log(`MSG_TEST: Ignoring SSE notification message: ${parsed.method}`);
               } else {
-                // // console.log(`MSG_TEST: Ignoring SSE JSON data with different id/structure (id: ${parsed?.id})`);
+                // console.log(`MSG_TEST: Ignoring SSE JSON data with different id/structure (id: ${parsed?.id})`);
               }
             } catch (e) {
               console.error("MSG_TEST: Failed to parse JSON from SSE data field:", sseData, e);
             }
           } else {
-            // // console.log(`MSG_TEST: SSE message block did not contain a 'data:' field.`);
+            // console.log(`MSG_TEST: SSE message block did not contain a 'data:' field.`);
           }
         } // end while
       }; // end dataHandler
@@ -240,7 +237,7 @@ describe('Puzzlebox API', () => {
       const errorHandler = (err: Error) => { console.error("MSG_TEST: Error on SSE stream while waiting for response:", err); clearTimeout(sseTimeout); rejectSse(err); };
       const closeHandler = () => { console.error("MSG_TEST: SSE stream closed while waiting for response"); clearTimeout(sseTimeout); rejectSse(new Error("SSE stream closed unexpectedly while waiting for response")); }
 
-      // console.log("MSG_TEST: Attaching listener to SSE stream...");
+      console.log("MSG_TEST: Attaching listener to SSE stream...");
       sseResponseStream.on('data', dataHandler);
       sseResponseStream.once('error', errorHandler);
       sseResponseStream.once('close', closeHandler);
@@ -256,12 +253,12 @@ describe('Puzzlebox API', () => {
       };
       let postTimeout = setTimeout(() => rejectPost(new Error("Timeout waiting for POST /message acknowledgement")), 5000);
 
-      // console.log(`MSG_TEST: Creating http.request POST to http://${options.hostname}:${options.port}${options.path}`);
+      console.log(`MSG_TEST: Creating http.request POST to http://${options.hostname}:${options.port}${options.path}`);
       const clientRequest = http.request(options, (res) => {
         clearTimeout(postTimeout);
-        // console.log(`MSG_TEST: POST Response received. Status: ${res.statusCode}`);
+        console.log(`MSG_TEST: POST Response received. Status: ${res.statusCode}`);
         if (res.statusCode === 202) {
-          // console.log("MSG_TEST: Received expected 202 Accepted for POST.");
+          console.log("MSG_TEST: Received expected 202 Accepted for POST.");
           res.resume();
           resolvePost();
         } else {
@@ -270,15 +267,15 @@ describe('Puzzlebox API', () => {
         }
       });
       clientRequest.on('error', (err) => { clearTimeout(postTimeout); rejectPost(err); });
-      // console.log("MSG_TEST: Writing POST request body...");
+      console.log("MSG_TEST: Writing POST request body...");
       clientRequest.write(requestBodyString);
       clientRequest.end();
     }); // end postAckPromise
 
     // Wait for both the POST acknowledgement AND the response on the SSE stream
-    // console.log("MSG_TEST: Waiting for POST acknowledgement and SSE response...");
+    console.log("MSG_TEST: Waiting for POST acknowledgement and SSE response...");
     const [, sseResult] = await Promise.all([postAckPromise, sseResponsePromise]);
-    // console.log("MSG_TEST: Both POST acknowledged and SSE response received.");
+    console.log("MSG_TEST: Both POST acknowledged and SSE response received.");
 
     // Assertions on the SSE response result
     expect(sseResult).toHaveProperty('jsonrpc', '2.0');
@@ -292,7 +289,7 @@ describe('Puzzlebox API', () => {
     expect(toolNames).toEqual(expect.arrayContaining([
       "add_puzzle", "get_puzzle_snapshot", "perform_action_on_puzzle", "count_puzzles"
     ]));
-    // console.log("MSG_TEST: Assertions passed for SSE response content.");
+    console.log("MSG_TEST: Assertions passed for SSE response content.");
 
   }, 15000); // Jest timeout
 
