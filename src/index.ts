@@ -31,25 +31,31 @@ app.get("/sse", async (req, res) => {
 
     // --- *** FORCE A YIELD - IMPORTANT FOR TEST ENVIRONMENT *** ---
     // Give the event loop a chance to process the write operation.
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
     // console.log(`SERVER_LOG: Yielded event loop after connect for sessionId: ${sessionId}`);
     // --- *** END FORCE YIELD *** ---
-
   } catch (error) {
-    console.error(`SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`, error);
+    console.error(
+      `SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`,
+      error,
+    );
     if (!closed) {
       transports.delete(sessionId);
       if (!res.headersSent) {
         console.error(`SERVER_LOG: Sending 500 due to connect error.`);
-        res.status(500).send('Internal Server Error during connection setup');
+        res.status(500).send("Internal Server Error during connection setup");
       } else if (!res.writableEnded) {
-        console.error(`SERVER_LOG: Ending response due to connect error after headers sent.`);
+        console.error(
+          `SERVER_LOG: Ending response due to connect error after headers sent.`,
+        );
         res.end();
       }
     }
   }
   // For SSE, we DON'T end the response here. It stays open.
-  console.log(`SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`);
+  console.log(
+    `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`,
+  );
 });
 
 // Connected clients post messages here
@@ -61,35 +67,40 @@ app.post("/message", async (req, res) => {
     try {
       await transport.handlePostMessage(req, res);
     } catch (error) {
-      console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error);
+      console.error(
+        `SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`,
+        error,
+      );
       if (!res.headersSent) {
-        res.status(500).send('Error handling message');
+        res.status(500).send("Error handling message");
       } else if (!res.writableEnded) {
         res.end();
       }
     }
   } else {
-    console.warn(`SERVER_LOG: POST /message received for unknown/missing sessionId: ${sessionId}`);
-    res.status(404).send('Session not found');
+    console.warn(
+      `SERVER_LOG: POST /message received for unknown/missing sessionId: ${sessionId}`,
+    );
+    res.status(404).send("Session not found");
   }
 });
 
 // Conditional listen based on NODE_ENV
 let runningServer: http.Server | null = null;
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   const PORT = process.env.PORT || 3001;
-  runningServer = app.listen(PORT, () => { // Store server instance
+  runningServer = app.listen(PORT, () => {
+    // Store server instance
     console.log(`Server is running on port ${PORT}`);
   });
 }
 
 // Graceful shutdown when requested
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing server');
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing server");
   runningServer?.close(() => {
-    console.log('Server closed');
+    console.log("Server closed");
   });
 });
-
 
 export default app;
