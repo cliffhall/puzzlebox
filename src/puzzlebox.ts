@@ -98,7 +98,10 @@ export const createServer = (
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    await logMessage("info", `Received Call Tool request: ${request.params.name}`);
+    await logMessage(
+      "info",
+      `Received Call Tool request: ${request.params.name}`,
+    );
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -136,7 +139,10 @@ export const createServer = (
                   });
                 } else {
                   subscribers.delete(subscriber); // subscriber has disconnected
-                  await logMessage("info", `Disconnected subscriber removed: ${subscriber}`);
+                  await logMessage(
+                    "info",
+                    `Disconnected subscriber removed: ${subscriber}`,
+                  );
                 }
               }
             }
@@ -158,7 +164,7 @@ export const createServer = (
     } catch (error) {
       await logMessage(
         "error",
-        `Error processing request: ${error instanceof Error ? error.message: "unknown error"}`,
+        `Error processing request: ${error instanceof Error ? error.message : "unknown error"}`,
       );
       return {};
     }
