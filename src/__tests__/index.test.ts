@@ -10,13 +10,12 @@ import {
   establishSseSession,
   sendJsonRpcMessage,
   waitForSseResponse,
-} from "../common/client-utils.ts"; // Keep utility imports
+} from "../common/client-utils.ts";
 
 // --- Global Map for Active Connections ---
 const activeSseConnections: Map<string, ActiveSseConnection> = new Map();
 
 describe("Puzzlebox Server", () => {
-  // --- Variables to hold per-test server instance and address ---
   let server: http.Server;
   let serverAddress: AddressInfo;
 
@@ -150,7 +149,7 @@ describe("Puzzlebox Server", () => {
   });
 
   it("GET /sse should establish a session", async () => {
-    console.log("TEST_RUN: Starting 'GET /sse should establish a session'");
+    console.log("ESTABLISH_SESSION: Starting 'GET /sse should establish a session'");
     // serverAddress is guaranteed to be set by beforeEach completing successfully
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -159,15 +158,9 @@ describe("Puzzlebox Server", () => {
     expect(sessionId).toMatch(/^[a-f0-9-]{36}$/);
     expect(sseResponseStream).toBeDefined();
     expect(activeSseConnections.has(sessionId)).toBe(true);
-    console.log(
-      `TEST_RUN: Finished 'GET /sse should establish a session' for ${sessionId}`,
-    );
-  }, 10000); // Timeout for session initialization call
+  }, 10000);
 
   it("POST /message 'tools/list' should respond with tool list", async () => {
-    console.log("TEST_RUN: Starting 'POST /message tools/list'");
-    // No need to check serverAddress here, beforeEach handles it
-
     console.log("MSG_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -211,13 +204,10 @@ describe("Puzzlebox Server", () => {
         "count_puzzles",
       ]),
     );
-    console.log("MSG_TEST: Assertions passed for SSE response content.");
-    console.log("TEST_RUN: Finished 'POST /message tools/list'");
   }, 15000);
 
   it("POST /message 'tools/call' - add_puzzle should add a puzzle and return its ID", async () => {
-    console.log("TEST_RUN: Starting 'POST /message add_puzzle'");
-
+    // Establish session
     console.log("ADD_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -225,6 +215,7 @@ describe("Puzzlebox Server", () => {
     );
     console.log(`ADD_TEST: SSE session established: ${sessionId}`);
 
+    // Create request
     const requestPayload: JsonRpcRequest = {
       method: "tools/call",
       params: {
@@ -235,6 +226,7 @@ describe("Puzzlebox Server", () => {
       id: `add-${Date.now()}`, // Use dynamic ID
     };
 
+    // Send request / wait for response
     console.log("ADD_TEST: Initiating POST send and SSE wait concurrently...");
     const [, sseResult] = await Promise.all([
       sendJsonRpcMessage(serverAddress, sessionId, requestPayload),
@@ -270,14 +262,9 @@ describe("Puzzlebox Server", () => {
         `Failed to parse add_puzzle response JSON: '${sseResult.result.content[0].text}'. Error: ${errorMsg}`,
       );
     }
-
-    console.log("ADD_TEST: Assertions passed.");
-    console.log("TEST_RUN: Finished 'POST /message add_puzzle'");
   }, 15000);
 
-  it("POST /message 'tools/call' - count_puzzles should respond with count 1 after adding one puzzle", async () => {
-    console.log("TEST_RUN: Starting 'POST /message count_puzzles'");
-
+  it("POST /message 'tools/call' - count_puzzles should return correct count after adding puzzles", async () => {
     console.log("COUNT_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -285,34 +272,10 @@ describe("Puzzlebox Server", () => {
     );
     console.log(`COUNT_TEST: SSE session established: ${sessionId}`);
 
-    // --- Add a puzzle first ---
-    const addPuzzleRequestId = `add-${Date.now()}`;
-    const addPuzzleRequestPayload: JsonRpcRequest = {
-      method: "tools/call",
-      params: {
-        name: "add_puzzle",
-        arguments: { config: getTestPuzzleConfig() },
-      },
-      jsonrpc: "2.0",
-      id: addPuzzleRequestId,
-    };
-
-    console.log("COUNT_TEST: Adding a puzzle first...");
-    const [, addResult] = await Promise.all([
-      sendJsonRpcMessage(serverAddress, sessionId, addPuzzleRequestPayload),
-      waitForSseResponse<ToolCallJsonResponse>(
-        sseResponseStream,
-        addPuzzleRequestId,
-      ),
-    ]);
-    // Basic check that add succeeded before counting
-    expect(addResult?.result?.content?.[0]?.text).toBeDefined();
-    const parsedAddResult = JSON.parse(addResult.result.content[0].text);
-    expect(parsedAddResult.success).toBe(true);
-    console.log(
-      `COUNT_TEST: Puzzle added with ID: ${parsedAddResult.puzzleId}`,
-    );
-    // --- End Add Puzzle ---
+    // Add three puzzles
+    await addPuzzle(serverAddress, sessionId, sseResponseStream);
+    await addPuzzle(serverAddress, sessionId, sseResponseStream);
+    await addPuzzle(serverAddress, sessionId, sseResponseStream);
 
     // --- Now count the puzzles ---
     const countRequestId = `count-${Date.now()}`;
@@ -348,8 +311,7 @@ describe("Puzzlebox Server", () => {
       const countResult = JSON.parse(sseResult.result.content[0].text);
       expect(countResult).toHaveProperty("count");
       expect(typeof countResult.count).toBe("number");
-      // CRITICAL: Expect 1 because the state was reset before this test
-      expect(countResult.count).toBe(1);
+      expect(countResult.count).toBe(3);
       console.log(`COUNT_TEST: Received count: ${countResult.count}`);
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -360,6 +322,227 @@ describe("Puzzlebox Server", () => {
     }
 
     console.log("COUNT_TEST: Assertions passed.");
-    console.log("TEST_RUN: Finished 'POST /message count_puzzles'");
-  }, 15000); // Timeout
-}); // End describe block
+  }, 15000);
+
+  it("POST /message 'tools/call' - get_puzzle_snapshot should respond with initial state after adding puzzle", async () => {
+    console.log("SNAPSHOT_TEST: Establishing SSE session...");
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
+    console.log(`SNAPSHOT_TEST: SSE session established: ${sessionId}`);
+
+    // Add a puzzle
+    const puzzleId = await addPuzzle(
+      serverAddress,
+      sessionId,
+      sseResponseStream,
+    );
+
+    // Get puzzle snapshot
+    const sseResult = await getSnapshot(
+      serverAddress,
+      sessionId,
+      sseResponseStream,
+      puzzleId
+    );
+
+    // Assertions for snapshot
+    try {
+      const snapshotResult = JSON.parse(sseResult.result.content[0].text);
+      expect(snapshotResult).toHaveProperty("currentState");
+      expect(typeof snapshotResult.currentState).toBe("string");
+      expect(snapshotResult.currentState).toBe("Closed");
+      expect(Array.isArray(snapshotResult.availableActions)).toBe(true);
+      expect(snapshotResult.availableActions).toEqual(
+        expect.arrayContaining(["Open", "Lock"]),
+      );
+
+      console.log(`SNAPSHOT_TEST: Received snapshot: ${snapshotResult}`);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error("SNAPSHOT_TEST: JSON parsing error:", errorMsg);
+      throw new Error( // Fail the test explicitly
+        `Failed to parse get_puzzle_snapshot response JSON: '${sseResult.result.content[0].text}'. Error: ${errorMsg}`,
+      );
+    }
+}, 15000);
+
+  it("POST /message 'tools/call' - perform_action_on_puzzle should change puzzle state", async () => {
+    console.log("PERFORM_ACTION_TEST: Establishing SSE session...");
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
+    console.log(`PERFORM_ACTION_TEST: SSE session established: ${sessionId}`);
+
+    // Add a puzzle
+    const puzzleId = await addPuzzle(
+      serverAddress,
+      sessionId,
+      sseResponseStream,
+    );
+
+    // Create request
+    const actionRequestId = `action-${Date.now()}`;
+    const actionRequestPayload: JsonRpcRequest = {
+      method: "tools/call",
+      params: {
+        name: "perform_action_on_puzzle",
+        arguments: {
+          puzzleId: puzzleId,
+          actionName: "Lock",
+        },
+      },
+      jsonrpc: "2.0",
+      id: actionRequestId,
+    };
+
+    // Send request / wait for response
+    console.log("PERFORM_ACTION_TEST: Performing action...");
+    const [, sseResult] = await Promise.all([
+      sendJsonRpcMessage(serverAddress, sessionId, actionRequestPayload),
+      waitForSseResponse<ToolCallJsonResponse>(
+        sseResponseStream,
+        actionRequestId,
+      ),
+    ]);
+    console.log("PERFORM_ACTION_TEST: Perform Action response received.");
+    console.log(
+      `PERFORM_ACTION_TEST: Received result: ${JSON.stringify(sseResult)}`,
+    );
+
+    // Assertions for response
+    expect(sseResult).toBeDefined();
+    expect(sseResult.jsonrpc).toBe("2.0");
+    expect(sseResult.id).toBe(actionRequestId);
+    expect(sseResult.error).toBeUndefined();
+    expect(sseResult.result).toBeDefined();
+    expect(sseResult.result).toHaveProperty("content");
+    expect(Array.isArray(sseResult.result.content)).toBe(true);
+    expect(sseResult.result.content.length).toBeGreaterThan(0);
+    expect(sseResult.result.content[0].type).toBe("text");
+
+    try {
+      const actionResult = JSON.parse(sseResult.result.content[0].text);
+      expect(actionResult).toHaveProperty("success");
+      expect(actionResult.success).toBe(true);
+      console.log(`PERFORM_ACTION_TEST: Received result: ${actionResult}`);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error("PERFORM_ACTION_TEST: JSON parsing error:", errorMsg);
+      throw new Error( // Fail the test explicitly
+        `Failed to parse perform_action_on_puzzle response JSON: '${sseResult.result.content[0].text}'. Error: ${errorMsg}`,
+      );
+    }
+
+    // Get puzzle snapshot
+    const result = await getSnapshot(
+      serverAddress,
+      sessionId,
+      sseResponseStream,
+      puzzleId
+    );
+
+    const snapshotResult = JSON.parse(result.result.content[0].text);
+    expect(snapshotResult).toHaveProperty("currentState");
+    expect(typeof snapshotResult.currentState).toBe("string");
+    expect(snapshotResult.currentState).toBe("Locked");
+    expect(Array.isArray(snapshotResult.availableActions)).toBe(true);
+    expect(snapshotResult.availableActions).toEqual(
+      expect.arrayContaining(["Unlock", "KickIn"]),
+    );
+  }, 15000);
+});
+
+/**
+ * Helper to add a puzzle
+ * @param serverAddress
+ * @param sessionId
+ * @param sseResponseStream
+ */
+async function addPuzzle(
+  serverAddress: AddressInfo,
+  sessionId: string,
+  sseResponseStream: http.IncomingMessage,
+): Promise<string> {
+  const addPuzzleRequestId = `add-${Date.now()}`;
+  const addPuzzleRequestPayload: JsonRpcRequest = {
+    method: "tools/call",
+    params: {
+      name: "add_puzzle",
+      arguments: { config: getTestPuzzleConfig() },
+    },
+    jsonrpc: "2.0",
+    id: addPuzzleRequestId,
+  };
+
+  console.log("ADD_PUZZLE: Adding a puzzle first...");
+  const [, addResult] = await Promise.all([
+    sendJsonRpcMessage(serverAddress, sessionId, addPuzzleRequestPayload),
+    waitForSseResponse<ToolCallJsonResponse>(
+      sseResponseStream,
+      addPuzzleRequestId,
+    ),
+  ]);
+
+  // Basic check that add succeeded before performing action
+  expect(addResult?.result?.content?.[0]?.text).toBeDefined();
+  const parsedAddResult = JSON.parse(addResult.result.content[0].text);
+  expect(parsedAddResult.success).toBe(true);
+  console.log(
+    `ADD_PUZZLE Puzzle added with ID: ${parsedAddResult.puzzleId}`,
+  );
+  return parsedAddResult.puzzleId;
+}
+
+
+/**
+ * Helper to get a puzzle snapshot
+ * @param serverAddress
+ * @param sessionId
+ * @param sseResponseStream
+ * @param puzzleId
+ */
+async function getSnapshot(
+  serverAddress: AddressInfo,
+  sessionId: string,
+  sseResponseStream: http.IncomingMessage,
+  puzzleId: string
+): Promise<ToolCallJsonResponse> {
+  const snapshotRequestId = `snapshot-${Date.now()}`;
+  const snapshotRequestPayload: JsonRpcRequest = {
+    method: "tools/call",
+    params: {
+      name: "get_puzzle_snapshot",
+      arguments: {
+        puzzleId: puzzleId,
+      },
+    },
+    jsonrpc: "2.0",
+    id: snapshotRequestId,
+  };
+
+  console.log("SNAPSHOT: Getting Snapshot...");
+  const [, sseResult] = await Promise.all([
+    sendJsonRpcMessage(serverAddress, sessionId, snapshotRequestPayload),
+    waitForSseResponse<ToolCallJsonResponse>(
+      sseResponseStream,
+      snapshotRequestId,
+    ),
+  ]);
+  console.log("SNAPSHOT Snapshot response received.");
+
+  // Assertions for result wrapper
+  expect(sseResult).toBeDefined();
+  expect(sseResult.jsonrpc).toBe("2.0");
+  expect(sseResult.id).toBe(snapshotRequestId);
+  expect(sseResult.error).toBeUndefined();
+  expect(sseResult.result).toBeDefined();
+  expect(sseResult.result).toHaveProperty("content");
+  expect(Array.isArray(sseResult.result.content)).toBe(true);
+  expect(sseResult.result.content.length).toBeGreaterThan(0);
+  expect(sseResult.result.content[0].type).toBe("text");
+
+  return sseResult;
+}
