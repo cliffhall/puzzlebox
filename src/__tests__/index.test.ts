@@ -366,9 +366,9 @@ describe("Puzzlebox Server", () => {
         `Failed to parse get_puzzle_snapshot response JSON: '${sseResult.result.content[0].text}'. Error: ${errorMsg}`,
       );
     }
-}, 15000);
+  }, 15000);
 
-  it("POST /message 'tools/call' - perform_action_on_puzzle should change puzzle state", async () => {
+  it("POST /message 'tools/call' - perform_action_on_puzzle should change puzzle state", async () =>  {
     console.log("PERFORM_ACTION_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
