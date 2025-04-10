@@ -264,4 +264,93 @@ describe("Puzzlebox Server", () => {
     console.log("COUNT_TEST: Assertions passed.");
     console.log("TEST_RUN: Finished 'POST /message count_puzzles'");
   }, 15000); //Timeout to accommodate SSE wait + POST ack
+
+  it("POST /message tools/call add_puzzle should add a puzzle and return its ID", async () => {
+    console.log("TEST_RUN: Starting 'POST /message add_puzzle'");
+    if (!serverAddress) throw new Error("Server address not available");
+
+    // 1. Define the sample puzzle configuration from README.md
+    const samplePuzzleConfig = {
+      initialState: "LOBBY",
+      states: {
+        LOBBY: {
+          name: "LOBBY",
+          actions: {
+            START_GAME: { name: "START_GAME", targetState: "PLAYING" },
+          },
+        },
+        PLAYING: {
+          name: "PLAYING",
+          actions: {
+            END_GAME: { name: "END_GAME", targetState: "GAME_OVER" },
+          },
+        },
+        GAME_OVER: {
+          name: "GAME_OVER",
+          actions: {
+            RESTART: { name: "RESTART", targetState: "PLAYING" },
+          },
+        },
+      },
+    };
+
+    console.log("ADD_TEST: Establishing SSE session...");
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
+    console.log(`ADD_TEST: SSE session established: ${sessionId}`);
+
+    // 2. Construct the JSON-RPC request payload
+    const requestPayload: JsonRpcRequest = {
+      method: "tools/call",
+      params: {
+        name: "add_puzzle",
+        arguments: { config: samplePuzzleConfig },
+      },
+      jsonrpc: "2.0",
+      id: 7, // Use a new unique ID
+    };
+
+    console.log("ADD_TEST: Initiating POST send and SSE wait concurrently...");
+    // 3. Send the request and wait for the SSE response
+    const [, sseResult] = await Promise.all([
+      sendJsonRpcMessage(serverAddress, sessionId, requestPayload),
+      waitForSseResponse<ToolCallJsonResponse>( // Expecting a ToolCallJsonResponse
+        sseResponseStream,
+        requestPayload.id,
+      ),
+    ]);
+    console.log("ADD_TEST: Both POST acknowledged and SSE response received.");
+
+    // 4. Assertions on the SSE response
+    expect(sseResult).toBeDefined();
+    expect(sseResult.jsonrpc).toBe("2.0");
+    expect(sseResult.id).toBe(requestPayload.id);
+    expect(sseResult.error).toBeUndefined(); // Expect success
+    expect(sseResult.result).toHaveProperty("content");
+    expect(Array.isArray(sseResult.result.content)).toBe(true);
+    expect(sseResult.result.content.length).toBeGreaterThan(0);
+    expect(sseResult.result.content[0].type).toBe("text");
+
+    // 5. Parse the result from the text content and assert its structure
+    try {
+      const addResult = JSON.parse(sseResult.result.content[0].text);
+      expect(addResult).toHaveProperty("success", true);
+      expect(addResult).toHaveProperty("puzzleId");
+      expect(typeof addResult.puzzleId).toBe("string"); // Check if puzzleId is a string
+      expect(addResult.puzzleId.length).toBeGreaterThan(0); // Check if it's not empty
+      console.log(`ADD_TEST: Received puzzleId: ${addResult.puzzleId}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        console.error(e);
+      }
+      throw new Error(
+        `Failed to parse add_puzzle response JSON: ${sseResult.result.content[0].text}`,
+      );
+    }
+
+    console.log("ADD_TEST: Assertions passed.");
+    console.log("TEST_RUN: Finished 'POST /message add_puzzle'");
+  }, 15000); // Timeout to accommodate SSE wait + POST ack
 });
