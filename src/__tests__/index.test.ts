@@ -3,16 +3,13 @@ import app from "../index.ts";
 import { AddressInfo } from "net";
 import {
   JsonRpcRequest,
-  JsonRpcResponse,
   ToolDefinition,
-  ToolsListResult,
   ToolsListJsonResponse,
-  ToolCallResult,
   ToolCallJsonResponse,
   ActiveSseConnection,
   establishSseSession,
   sendJsonRpcMessage,
-  waitForSseResponse
+  waitForSseResponse,
 } from "../common/client-utils.ts";
 
 const activeSseConnections: Map<string, ActiveSseConnection> = new Map();
@@ -142,8 +139,10 @@ describe("Puzzlebox Server", () => {
 
   it("GET /sse should establish a session", async () => {
     console.log("TEST_RUN: Starting 'GET /sse should establish a session'");
-    const { sessionId, sseResponseStream } =
-      await establishSseSession(serverAddress, activeSseConnections);
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
     expect(sessionId).toMatch(/^[a-f0-9-]{36}$/);
     expect(sseResponseStream).toBeDefined();
     expect(activeSseConnections.has(sessionId)).toBe(true);
@@ -157,8 +156,10 @@ describe("Puzzlebox Server", () => {
     if (!serverAddress) throw new Error("Server address not available");
 
     console.log("MSG_TEST: Establishing SSE session...");
-    const { sessionId, sseResponseStream } =
-      await establishSseSession(serverAddress, activeSseConnections);
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
     console.log(`MSG_TEST: SSE session established: ${sessionId}`);
 
     const requestPayload: JsonRpcRequest = {
@@ -208,8 +209,10 @@ describe("Puzzlebox Server", () => {
     if (!serverAddress) throw new Error("Server address not available");
 
     console.log("COUNT_TEST: Establishing SSE session...");
-    const { sessionId, sseResponseStream } =
-      await establishSseSession(serverAddress, activeSseConnections);
+    const { sessionId, sseResponseStream } = await establishSseSession(
+      serverAddress,
+      activeSseConnections,
+    );
     console.log(`COUNT_TEST: SSE session established: ${sessionId}`);
 
     const requestPayload: JsonRpcRequest = {

@@ -45,10 +45,14 @@ export interface ActiveSseConnection {
   response: http.IncomingMessage;
 }
 
-// --- Helper Function: Establish SSE, get Session ID & Response Stream ---
+/**
+ * Establish SSE session, get Session ID & Response Stream
+ * @param serverAddress
+ * @param activeSseConnections
+ */
 export async function establishSseSession(
   serverAddress: AddressInfo,
-  activeSseConnections: Map<string, ActiveSseConnection>
+  activeSseConnections: Map<string, ActiveSseConnection>,
 ): Promise<{ sessionId: string; sseResponseStream: http.IncomingMessage }> {
   return new Promise((resolve, reject) => {
     let buffer = "";
@@ -142,7 +146,7 @@ export async function establishSseSession(
         while (
           !promiseSettled &&
           (messageEndIndex = buffer.indexOf("\n\n")) !== -1
-          ) {
+        ) {
           const message = buffer.substring(0, messageEndIndex);
           buffer = buffer.substring(messageEndIndex + 2); // Consume message and delimiter
           if (!promiseSettled) {
@@ -245,7 +249,13 @@ export async function establishSseSession(
   });
 }
 
-// --- Helper Function: Send JSON-RPC message via POST and wait for 202 Ack ---
+/**
+ * Send JSON-RPC message via POST and wait for 202 Ack
+ * @param serverAddress
+ * @param sessionId
+ * @param payload
+ * @param timeoutMs
+ */
 export async function sendJsonRpcMessage(
   serverAddress: AddressInfo,
   sessionId: string,
@@ -347,7 +357,12 @@ export async function sendJsonRpcMessage(
   });
 }
 
-// --- Helper Function: Wait for a specific JSON-RPC response on the SSE stream ---
+/**
+ * Wait for a specific JSON-RPC response on the SSE stream
+ * @param sseResponseStream
+ * @param expectedId
+ * @param timeoutMs
+ */
 export async function waitForSseResponse<T extends JsonRpcResponse>(
   sseResponseStream: http.IncomingMessage,
   expectedId: number | string,
@@ -398,7 +413,7 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
       while (
         !promiseSettled &&
         (messageEndIndex = sseBuffer.indexOf("\n\n")) !== -1
-        ) {
+      ) {
         const message = sseBuffer.substring(0, messageEndIndex);
         sseBuffer = sseBuffer.substring(messageEndIndex + 2); // Consume message + delimiter
 
