@@ -34443,7 +34443,10 @@ var createServer = (transports2, subscriptions2) => {
     };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    await logMessage("info", `Received Call Tool request: ${request.params.name}`);
+    await logMessage(
+      "info",
+      `Received Call Tool request: ${request.params.name}`
+    );
     try {
       switch (request.params.name) {
         case "add_puzzle": {
@@ -34480,7 +34483,10 @@ var createServer = (transports2, subscriptions2) => {
                   });
                 } else {
                   subscribers.delete(subscriber);
-                  await logMessage("info", `Disconnected subscriber removed: ${subscriber}`);
+                  await logMessage(
+                    "info",
+                    `Disconnected subscriber removed: ${subscriber}`
+                  );
                 }
               }
             }
@@ -34616,19 +34622,26 @@ app.get("/sse", async (req, res) => {
     await server.connect(transport);
     await new Promise((resolve) => setImmediate(resolve));
   } catch (error) {
-    console.error(`SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`, error);
+    console.error(
+      `SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`,
+      error
+    );
     if (!closed) {
       transports.delete(sessionId);
       if (!res.headersSent) {
         console.error(`SERVER_LOG: Sending 500 due to connect error.`);
         res.status(500).send("Internal Server Error during connection setup");
       } else if (!res.writableEnded) {
-        console.error(`SERVER_LOG: Ending response due to connect error after headers sent.`);
+        console.error(
+          `SERVER_LOG: Ending response due to connect error after headers sent.`
+        );
         res.end();
       }
     }
   }
-  console.log(`SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`);
+  console.log(
+    `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`
+  );
 });
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
@@ -34637,7 +34650,10 @@ app.post("/message", async (req, res) => {
     try {
       await transport.handlePostMessage(req, res);
     } catch (error) {
-      console.error(`SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`, error);
+      console.error(
+        `SERVER_LOG: Error handling POST /message for sessionId: ${sessionId}:`,
+        error
+      );
       if (!res.headersSent) {
         res.status(500).send("Error handling message");
       } else if (!res.writableEnded) {
@@ -34645,7 +34661,9 @@ app.post("/message", async (req, res) => {
       }
     }
   } else {
-    console.warn(`SERVER_LOG: POST /message received for unknown/missing sessionId: ${sessionId}`);
+    console.warn(
+      `SERVER_LOG: POST /message received for unknown/missing sessionId: ${sessionId}`
+    );
     res.status(404).send("Session not found");
   }
 });
