@@ -149,7 +149,9 @@ describe("Puzzlebox Server", () => {
   });
 
   it("GET /sse should establish a session", async () => {
-    console.log("ESTABLISH_SESSION: Starting 'GET /sse should establish a session'");
+    console.log(
+      "ESTABLISH_SESSION: Starting 'GET /sse should establish a session'",
+    );
     // serverAddress is guaranteed to be set by beforeEach completing successfully
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -344,7 +346,7 @@ describe("Puzzlebox Server", () => {
       serverAddress,
       sessionId,
       sseResponseStream,
-      puzzleId
+      puzzleId,
     );
 
     // Assertions for snapshot
@@ -368,7 +370,7 @@ describe("Puzzlebox Server", () => {
     }
   }, 15000);
 
-  it("POST /message 'tools/call' - perform_action_on_puzzle should change puzzle state", async () =>  {
+  it("POST /message 'tools/call' - perform_action_on_puzzle should change puzzle state", async () => {
     console.log("PERFORM_ACTION_TEST: Establishing SSE session...");
     const { sessionId, sseResponseStream } = await establishSseSession(
       serverAddress,
@@ -441,7 +443,7 @@ describe("Puzzlebox Server", () => {
       serverAddress,
       sessionId,
       sseResponseStream,
-      puzzleId
+      puzzleId,
     );
 
     const snapshotResult = JSON.parse(result.result.content[0].text);
@@ -490,12 +492,9 @@ async function addPuzzle(
   expect(addResult?.result?.content?.[0]?.text).toBeDefined();
   const parsedAddResult = JSON.parse(addResult.result.content[0].text);
   expect(parsedAddResult.success).toBe(true);
-  console.log(
-    `ADD_PUZZLE Puzzle added with ID: ${parsedAddResult.puzzleId}`,
-  );
+  console.log(`ADD_PUZZLE Puzzle added with ID: ${parsedAddResult.puzzleId}`);
   return parsedAddResult.puzzleId;
 }
-
 
 /**
  * Helper to get a puzzle snapshot
@@ -508,7 +507,7 @@ async function getSnapshot(
   serverAddress: AddressInfo,
   sessionId: string,
   sseResponseStream: http.IncomingMessage,
-  puzzleId: string
+  puzzleId: string,
 ): Promise<ToolCallJsonResponse> {
   const snapshotRequestId = `snapshot-${Date.now()}`;
   const snapshotRequestPayload: JsonRpcRequest = {

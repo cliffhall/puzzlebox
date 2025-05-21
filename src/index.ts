@@ -18,43 +18,20 @@ app.get("/sse", async (req, res) => {
   const sessionId = transport.sessionId; // Get the transport session id
   transports.set(sessionId, transport); // Store transport by session id
 
-  // Track if close handler was called to prevent double logging/errors
-  let closed = false;
   res.on("close", () => {
-    if (closed) return;
-    closed = true;
     transports.delete(sessionId);
+    server.close();
   });
 
-  try {
-    await server.connect(transport);
+  await server.connect(transport);
 
-    // --- *** FORCE A YIELD - IMPORTANT FOR TEST ENVIRONMENT *** ---
-    // Give the event loop a chance to process the write operation.
-    await new Promise((resolve) => setImmediate(resolve));
-    // console.log(`SERVER_LOG: Yielded event loop after connect for sessionId: ${sessionId}`);
-    // --- *** END FORCE YIELD *** ---
-  } catch (error) {
-    console.error(
-      `SERVER_LOG: Error during server.connect/yield for sessionId: ${sessionId}:`,
-      error,
-    );
-    if (!closed) {
-      transports.delete(sessionId);
-      if (!res.headersSent) {
-        console.error(`SERVER_LOG: Sending 500 due to connect error.`);
-        res.status(500).send("Internal Server Error during connection setup");
-      } else if (!res.writableEnded) {
-        console.error(
-          `SERVER_LOG: Ending response due to connect error after headers sent.`,
-        );
-        res.end();
-      }
-    }
-  }
-  // For SSE, we DON'T end the response here. It stays open.
+  // --- *** FORCE A YIELD - IMPORTANT FOR TEST ENVIRONMENT *** ---
+  // Give the event loop a chance to process the write operation.
+  await new Promise((resolve) => setImmediate(resolve));
+  // --- *** END FORCE YIELD *** ---
+
   console.log(
-    `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`,
+  `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`,
   );
 });
 
