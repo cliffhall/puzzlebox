@@ -13,15 +13,17 @@ const subscriptions: Map<string, Set<string>> = new Map<string, Set<string>>(); 
 
 // Clients connect here first
 app.get("/sse", async (req, res) => {
+
   const { server } = createServer(transports, subscriptions); // Server for every new connection
   const transport = new SSEServerTransport("/message", res); // Create transport
   const sessionId = transport.sessionId; // Get the transport session id
   transports.set(sessionId, transport); // Store transport by session id
 
-  res.on("close", () => {
-    transports.delete(sessionId);
-    server.close();
-  });
+  // Handle close of connection
+  server.onclose = () => {
+    console.error("Client Disconnected: ", transport.sessionId);
+    transports.delete(transport.sessionId);
+  };
 
   await server.connect(transport);
 

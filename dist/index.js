@@ -59257,10 +59257,10 @@ app.get("/sse", async (req, res) => {
   const transport = new SSEServerTransport("/message", res);
   const sessionId = transport.sessionId;
   transports.set(sessionId, transport);
-  res.on("close", () => {
-    transports.delete(sessionId);
-    server.close();
-  });
+  server.onclose = () => {
+    console.error("Client Disconnected: ", transport.sessionId);
+    transports.delete(transport.sessionId);
+  };
   await server.connect(transport);
   await new Promise((resolve) => setImmediate(resolve));
   console.log(
