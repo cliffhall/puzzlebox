@@ -56313,7 +56313,11 @@ var ProgressSchema = z.object({
   /**
    * Total number of items to process (or total progress required), if known.
    */
-  total: z.optional(z.number())
+  total: z.optional(z.number()),
+  /**
+   * An optional message describing the current progress.
+   */
+  message: z.optional(z.string())
 }).passthrough();
 var ProgressNotificationSchema = NotificationSchema.extend({
   method: z.literal("notifications/progress"),
@@ -58731,7 +58735,7 @@ var Protocol = class {
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken } = options !== null && options !== void 0 ? options : {};
     return new Promise((resolve, reject) => {
-      var _a, _b, _c, _d, _e;
+      var _a, _b, _c, _d, _e, _f;
       if (!this._transport) {
         reject(new Error("Not connected"));
         return;
@@ -58750,7 +58754,10 @@ var Protocol = class {
         this._progressHandlers.set(messageId, options.onprogress);
         jsonrpcRequest.params = {
           ...request.params,
-          _meta: { progressToken: messageId }
+          _meta: {
+            ...((_c = request.params) === null || _c === void 0 ? void 0 : _c._meta) || {},
+            progressToken: messageId
+          }
         };
       }
       const cancel = (reason) => {
@@ -58783,13 +58790,13 @@ var Protocol = class {
           reject(error);
         }
       });
-      (_c = options === null || options === void 0 ? void 0 : options.signal) === null || _c === void 0 ? void 0 : _c.addEventListener("abort", () => {
+      (_d = options === null || options === void 0 ? void 0 : options.signal) === null || _d === void 0 ? void 0 : _d.addEventListener("abort", () => {
         var _a2;
         cancel((_a2 = options === null || options === void 0 ? void 0 : options.signal) === null || _a2 === void 0 ? void 0 : _a2.reason);
       });
-      const timeout = (_d = options === null || options === void 0 ? void 0 : options.timeout) !== null && _d !== void 0 ? _d : DEFAULT_REQUEST_TIMEOUT_MSEC;
+      const timeout = (_e = options === null || options === void 0 ? void 0 : options.timeout) !== null && _e !== void 0 ? _e : DEFAULT_REQUEST_TIMEOUT_MSEC;
       const timeoutHandler = () => cancel(new McpError(ErrorCode.RequestTimeout, "Request timed out", { timeout }));
-      this._setupTimeout(messageId, timeout, options === null || options === void 0 ? void 0 : options.maxTotalTimeout, timeoutHandler, (_e = options === null || options === void 0 ? void 0 : options.resetTimeoutOnProgress) !== null && _e !== void 0 ? _e : false);
+      this._setupTimeout(messageId, timeout, options === null || options === void 0 ? void 0 : options.maxTotalTimeout, timeoutHandler, (_f = options === null || options === void 0 ? void 0 : options.resetTimeoutOnProgress) !== null && _f !== void 0 ? _f : false);
       this._transport.send(jsonrpcRequest, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error) => {
         this._cleanupTimeout(messageId);
         reject(error);
