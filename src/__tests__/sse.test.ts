@@ -10,7 +10,7 @@ import {
   establishSseSession,
   sendJsonRpcMessage,
   waitForSseResponse,
-} from "../common/client-utils.ts";
+} from "../common/sse-client-utils.ts";
 
 // --- Global Map for Active Connections ---
 const activeSseConnections: Map<string, ActiveSseConnection> = new Map();

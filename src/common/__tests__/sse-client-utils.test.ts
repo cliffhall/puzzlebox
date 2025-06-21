@@ -10,12 +10,12 @@ import {
   ActiveSseConnection,
   JsonRpcResponse,
   ToolsListJsonResponse,
-} from "../client-utils.ts";
+} from "../sse-client-utils.ts";
 
 // Helper to delay execution
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-describe("Client Utilities", () => {
+describe("SSE Client Utilities", () => {
   let server: http.Server;
   let serverAddress: AddressInfo;
   let activeSseConnections: Map<string, ActiveSseConnection>;
