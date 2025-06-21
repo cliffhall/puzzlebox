@@ -25,7 +25,7 @@ describe("Puzzlebox Server", () => {
     console.log("TEST_LOG: (BeforeEach) jest.resetModules() called.");
 
     // 2. Dynamically require the app *after* resetting modules
-    const app = require("../index.ts").default;
+    const app = require("../sse.ts").default;
     console.log("TEST_LOG: (BeforeEach) App module re-required.");
 
     // 3. Create a *new* server instance with the fresh app

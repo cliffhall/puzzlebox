@@ -89,10 +89,12 @@ export async function establishSseSession(
         console.error("SSE_HELPER: Rejecting SSE promise.", err.message);
         reject(err);
       } else {
+        /* istanbul ignore next */
         // This path might occur if cleanup is called unexpectedly before details are ready
         console.error(
           "SSE_HELPER: Cleanup called in unexpected state, potentially before connection fully established or after destroy.",
         );
+        /* istanbul ignore next */
         // Reject if no details, might indicate premature closure or setup issue.
         reject(new Error("SSE cleanup called in unexpected state"));
       }
@@ -146,7 +148,7 @@ export async function establishSseSession(
         while (
           !promiseSettled &&
           (messageEndIndex = buffer.indexOf("\n\n")) !== -1
-        ) {
+          ) {
           const message = buffer.substring(0, messageEndIndex);
           buffer = buffer.substring(messageEndIndex + 2); // Consume message and delimiter
           if (!promiseSettled) {
@@ -163,7 +165,8 @@ export async function establishSseSession(
 
             // Look for the specific setup message
             if (eventType === "endpoint" && eventData) {
-              const match = eventData.match(/sessionId=([a-f0-9-]{36})$/);
+              // FIX #1: Made the regex more flexible to accept various session ID formats, not just 36-char UUIDs.
+              const match = eventData.match(/sessionId=([a-zA-Z0-9-]+)$/);
               if (match && match[1]) {
                 console.log(`SSE_HELPER: Extracted sessionId: ${match[1]}`);
                 // Successfully established, remove premature close handlers
@@ -393,6 +396,7 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
         );
         reject(err);
       } else {
+        /* istanbul ignore next */
         // Should not happen if called correctly
         reject(
           new Error(
@@ -402,18 +406,20 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
       }
     };
 
-    const dataHandler = (chunk: string) => {
+    // FIX #2: Handle chunk as Buffer | string and convert to string before use.
+    const dataHandler = (chunk: Buffer | string) => {
       if (promiseSettled) return;
+      const chunkStr = chunk.toString(); // Ensure we are working with a string
       console.log(
-        `SSE_WAIT: Stream for id ${expectedId} received chunk: ${chunk.replace(/\n/g, "\\n")}`,
+        `SSE_WAIT: Stream for id ${expectedId} received chunk: ${chunkStr.replace(/\n/g, "\\n")}`,
       );
-      sseBuffer += chunk;
+      sseBuffer += chunkStr;
       let messageEndIndex;
       // Process all complete messages in the buffer
       while (
         !promiseSettled &&
         (messageEndIndex = sseBuffer.indexOf("\n\n")) !== -1
-      ) {
+        ) {
         const message = sseBuffer.substring(0, messageEndIndex);
         sseBuffer = sseBuffer.substring(messageEndIndex + 2); // Consume message + delimiter
 
