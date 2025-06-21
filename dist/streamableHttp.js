@@ -66018,146 +66018,93 @@ var app = (0, import_express.default)();
 var transports = /* @__PURE__ */ new Map();
 var subscriptions = /* @__PURE__ */ new Map();
 app.post("/mcp", async (req, res) => {
-  var _a, _b;
-  console.error("Received MCP POST request");
   try {
     const sessionId = req.headers["mcp-session-id"];
-    let transport;
     if (sessionId && transports.has(sessionId)) {
-      transport = transports.get(sessionId);
+      const transport = transports.get(sessionId);
+      await transport.handleRequest(req, res);
     } else if (!sessionId) {
       const { server } = createServer(transports, subscriptions);
       const eventStore = new InMemoryEventStore();
+      let transport;
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => (0, import_node_crypto2.randomUUID)(),
         eventStore,
-        // Enable resumability
-        onsessioninitialized: (sessionId2) => {
-          console.error(`Session initialized with ID: ${sessionId2}`);
-          transports.set(sessionId2, transport);
+        onsessioninitialized: (newSessionId) => {
+          console.error(`Session initialized with ID: ${newSessionId}`);
+          transports.set(newSessionId, transport);
         }
       });
-      server.onclose = async () => {
+      server.onclose = () => {
         const sid = transport.sessionId;
         if (sid && transports.has(sid)) {
-          console.error(`Transport closed for session ${sid}, removing from transports map`);
+          console.error(
+            `Server closed for session ${sid}, removing from transports map`
+          );
           transports.delete(sid);
         }
       };
       await server.connect(transport);
       await new Promise((resolve) => setImmediate(resolve));
-      transport.onclose = () => {
-        const sid = transport.sessionId;
-        if (sid && transports.get(sid)) {
-          console.error(
-            `Transport closed for session ${sid}, removing from transports map`
-          );
-          transports.delete(sid);
-          server.close();
-        }
-      };
       await transport.handleRequest(req, res);
-      return;
     } else {
-      res.status(400).json({
+      res.status(404).json({
         jsonrpc: "2.0",
-        error: {
-          code: -32e3,
-          message: "Bad Request: No valid session ID provided"
-        },
-        id: (_a = req == null ? void 0 : req.body) == null ? void 0 : _a.id
+        error: { code: -32e3, message: "Session not found" },
+        id: null
       });
-      return;
     }
-    await transport.handleRequest(req, res);
   } catch (error) {
-    console.error("Error handling MCP request:", error);
+    console.error("Error handling MCP POST request:", error);
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal server error"
-        },
-        id: (_b = req == null ? void 0 : req.body) == null ? void 0 : _b.id
+        error: { code: -32603, message: "Internal server error" },
+        id: null
       });
-      return;
     }
   }
 });
 app.get("/mcp", async (req, res) => {
-  var _a;
   console.error("Received MCP GET request");
   const sessionId = req.headers["mcp-session-id"];
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({
+    res.status(404).json({
       jsonrpc: "2.0",
-      error: {
-        code: -32e3,
-        message: "Bad Request: No valid session ID provided"
-      },
-      id: (_a = req == null ? void 0 : req.body) == null ? void 0 : _a.id
+      error: { code: -32e3, message: "Session not found" },
+      id: null
     });
     return;
-  }
-  const lastEventId = req.headers["last-event-id"];
-  if (lastEventId) {
-    console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
-  } else {
-    console.error(`Establishing new SSE stream for session ${sessionId}`);
   }
   const transport = transports.get(sessionId);
   await transport.handleRequest(req, res);
 });
 app.delete("/mcp", async (req, res) => {
-  var _a, _b;
+  console.error("Received MCP DELETE request");
   const sessionId = req.headers["mcp-session-id"];
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({
+    res.status(404).json({
       jsonrpc: "2.0",
-      error: {
-        code: -32e3,
-        message: "Bad Request: No valid session ID provided"
-      },
-      id: (_a = req == null ? void 0 : req.body) == null ? void 0 : _a.id
+      error: { code: -32e3, message: "Session not found" },
+      id: null
     });
     return;
   }
-  console.error(`Received session termination request for session ${sessionId}`);
-  try {
-    const transport = transports.get(sessionId);
-    await transport.handleRequest(req, res);
-  } catch (error) {
-    console.error("Error handling session termination:", error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Error handling session termination"
-        },
-        id: (_b = req == null ? void 0 : req.body) == null ? void 0 : _b.id
-      });
-      return;
-    }
-  }
+  const transport = transports.get(sessionId);
+  await transport.handleRequest(req, res);
 });
-var PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.error(`MCP Streamable HTTP Server listening on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.error(`MCP Streamable HTTP Server listening on port ${PORT}`);
+  });
+}
 process.on("SIGINT", async () => {
   console.error("Shutting down server...");
-  for (const sessionId in transports) {
-    try {
-      console.error(`Closing transport for session ${sessionId}`);
-      await transports.get(sessionId).close();
-      transports.delete(sessionId);
-    } catch (error) {
-      console.error(`Error closing transport for session ${sessionId}:`, error);
-    }
+  for (const transport of transports.values()) {
+    await transport.close();
   }
-  console.error("Server shutdown complete");
+  console.error("Server shutdown complete.");
   process.exit(0);
 });
 // Annotate the CommonJS export names for ESM import in node:

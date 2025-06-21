@@ -12697,13 +12697,19 @@ async function main() {
 }
 function printHelp() {
   console.log("\nAvailable commands:");
-  console.log("  connect [url]              - Connect to MCP server (default: http://localhost:3000/mcp)");
+  console.log(
+    "  connect [url]              - Connect to MCP server (default: http://localhost:3000/mcp)"
+  );
   console.log("  disconnect                 - Disconnect from server");
   console.log("  terminate-session          - Terminate the current session");
   console.log("  reconnect                  - Reconnect to the server");
   console.log("  list-tools                 - List available tools");
-  console.log("  call-tool <name> [args]    - Call a tool with optional JSON arguments");
-  console.log("  start-notifications [interval] [count] - Start periodic notifications");
+  console.log(
+    "  call-tool <name> [args]    - Call a tool with optional JSON arguments"
+  );
+  console.log(
+    "  start-notifications [interval] [count] - Start periodic notifications"
+  );
   console.log("  list-resources             - List available resources");
   console.log("  help                       - Show this help");
   console.log("  quit                       - Exit the program");
@@ -12816,36 +12822,47 @@ async function connect(url) {
     client.onerror = (error) => {
       console.error("\x1B[31mClient error:", error, "\x1B[0m");
     };
-    transport = new StreamableHTTPClientTransport(
-      new URL(serverUrl),
-      {
-        sessionId
+    transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+      sessionId
+    });
+    client.setNotificationHandler(
+      LoggingMessageNotificationSchema,
+      (notification) => {
+        notificationCount++;
+        console.log(
+          `
+Notification #${notificationCount}: ${notification.params.level} - ${notification.params.data}`
+        );
+        process.stdout.write("> ");
       }
     );
-    client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
-      notificationCount++;
-      console.log(`
-Notification #${notificationCount}: ${notification.params.level} - ${notification.params.data}`);
-      process.stdout.write("> ");
-    });
-    client.setNotificationHandler(ResourceListChangedNotificationSchema, async () => {
-      console.log(`
+    client.setNotificationHandler(
+      ResourceListChangedNotificationSchema,
+      async () => {
+        console.log(`
 Resource list changed notification received!`);
-      try {
-        if (!client) {
-          console.log("Client disconnected, cannot fetch resources");
-          return;
+        try {
+          if (!client) {
+            console.log("Client disconnected, cannot fetch resources");
+            return;
+          }
+          const resourcesResult = await client.request(
+            {
+              method: "resources/list",
+              params: {}
+            },
+            ListResourcesResultSchema
+          );
+          console.log(
+            "Available resources count:",
+            resourcesResult.resources.length
+          );
+        } catch {
+          console.log("Failed to list resources after change notification");
         }
-        const resourcesResult = await client.request({
-          method: "resources/list",
-          params: {}
-        }, ListResourcesResultSchema);
-        console.log("Available resources count:", resourcesResult.resources.length);
-      } catch {
-        console.log("Failed to list resources after change notification");
+        process.stdout.write("> ");
       }
-      process.stdout.write("> ");
-    });
+    );
     await client.connect(transport);
     sessionId = transport.sessionId;
     console.log("Transport created with session ID:", sessionId);
@@ -12887,7 +12904,9 @@ async function terminateSession() {
       client = null;
       transport = null;
     } else {
-      console.log("Server responded with 405 Method Not Allowed (session termination not supported)");
+      console.log(
+        "Server responded with 405 Method Not Allowed (session termination not supported)"
+      );
       console.log("Session ID is still active:", transport.sessionId);
     }
   } catch (error) {
@@ -12910,7 +12929,10 @@ async function listTools() {
       method: "tools/list",
       params: {}
     };
-    const toolsResult = await client.request(toolsRequest, ListToolsResultSchema);
+    const toolsResult = await client.request(
+      toolsRequest,
+      ListToolsResultSchema
+    );
     console.log("Available tools:");
     if (toolsResult.tools.length === 0) {
       console.log("  No tools available");
@@ -12965,7 +12987,9 @@ async function callMultiGreetTool(name) {
   await callTool("multi-greet", { name });
 }
 async function startNotifications(interval, count) {
-  console.log(`Starting notification stream: interval=${interval}ms, count=${count || "unlimited"}`);
+  console.log(
+    `Starting notification stream: interval=${interval}ms, count=${count || "unlimited"}`
+  );
   await callTool("start-notification-stream", { interval, count });
 }
 async function listPrompts() {
@@ -12978,7 +13002,10 @@ async function listPrompts() {
       method: "prompts/list",
       params: {}
     };
-    const promptsResult = await client.request(promptsRequest, ListPromptsResultSchema);
+    const promptsResult = await client.request(
+      promptsRequest,
+      ListPromptsResultSchema
+    );
     console.log("Available prompts:");
     if (promptsResult.prompts.length === 0) {
       console.log("  No prompts available");
@@ -13004,7 +13031,10 @@ async function getPrompt(name, args) {
         arguments: args
       }
     };
-    const promptResult = await client.request(promptRequest, GetPromptResultSchema);
+    const promptResult = await client.request(
+      promptRequest,
+      GetPromptResultSchema
+    );
     console.log("Prompt template:");
     promptResult.messages.forEach((msg, index) => {
       console.log(`  [${index + 1}] ${msg.role}: ${msg.content.text}`);
@@ -13023,7 +13053,10 @@ async function listResources() {
       method: "resources/list",
       params: {}
     };
-    const resourcesResult = await client.request(resourcesRequest, ListResourcesResultSchema);
+    const resourcesResult = await client.request(
+      resourcesRequest,
+      ListResourcesResultSchema
+    );
     console.log("Available resources:");
     if (resourcesResult.resources.length === 0) {
       console.log("  No resources available");

@@ -211,7 +211,7 @@ describe("Puzzlebox Server (Streamable HTTP)", () => {
     expect(sessionId).toMatch(/^[a-f0-9-]{36}$/);
     expect(eventStream).toBeDefined();
     expect(activeConnections.has(sessionId)).toBe(true);
-  }, 15000); // <--- INCREASED TEST TIMEOUT
+  }, 15000);
 
   it("POST /mcp 'tools/list' should respond with tool list", async () => {
     const { sessionId, eventStream } = await establishStreamableSession(

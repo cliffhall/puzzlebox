@@ -288,7 +288,7 @@ export async function sendJsonRpcMessage(
         console.log(
           `POST_HELPER: Resolving POST promise for session ${sessionId}, id ${payload.id}.`,
         );
-        resolve(); // Resolve successfully (got 202)
+        resolve();
       }
     };
 
@@ -396,7 +396,6 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
         );
         reject(err);
       } else {
-        /* istanbul ignore next */
         // Should not happen if called correctly
         reject(
           new Error(
@@ -406,7 +405,6 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
       }
     };
 
-    // FIX #2: Handle chunk as Buffer | string and convert to string before use.
     const dataHandler = (chunk: Buffer | string) => {
       if (promiseSettled) return;
       const chunkStr = chunk.toString(); // Ensure we are working with a string
