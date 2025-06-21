@@ -123,10 +123,7 @@ describe("SSE Client Utilities", () => {
 
       // Use jest fake timers to avoid waiting the full 5s
       jest.useFakeTimers();
-      const promise = establishSseSession(
-        serverAddress,
-        activeSseConnections,
-      );
+      const promise = establishSseSession(serverAddress, activeSseConnections);
       jest.advanceTimersByTime(5001);
       await expect(promise).rejects.toThrow(
         "Timeout waiting for SSE endpoint event (session ID)",
@@ -459,7 +456,11 @@ describe("SSE Client Utilities", () => {
         id: requestId,
         result: {
           tools: [
-            { name: "calculator", description: "A calculator", inputSchema: {} },
+            {
+              name: "calculator",
+              description: "A calculator",
+              inputSchema: {},
+            },
           ],
         },
       };

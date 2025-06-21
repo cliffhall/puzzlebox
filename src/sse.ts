@@ -13,7 +13,6 @@ const subscriptions: Map<string, Set<string>> = new Map<string, Set<string>>(); 
 
 // Clients connect here first
 app.get("/sse", async (req, res) => {
-
   const { server } = createServer(transports, subscriptions); // Server for every new connection
   const transport = new SSEServerTransport("/message", res); // Create transport
   const sessionId = transport.sessionId; // Get the transport session id
@@ -33,7 +32,7 @@ app.get("/sse", async (req, res) => {
   // --- *** END FORCE YIELD *** ---
 
   console.log(
-  `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`,
+    `SERVER_LOG: /sse handler finished setup for sessionId: ${sessionId}. Response should remain open.`,
   );
 });
 

@@ -10302,9 +10302,10 @@ var z = /* @__PURE__ */ Object.freeze({
 });
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
-var LATEST_PROTOCOL_VERSION = "2025-03-26";
+var LATEST_PROTOCOL_VERSION = "2025-06-18";
 var SUPPORTED_PROTOCOL_VERSIONS = [
   LATEST_PROTOCOL_VERSION,
+  "2025-03-26",
   "2024-11-05",
   "2024-10-07"
 ];
@@ -10326,7 +10327,8 @@ var RequestSchema = z.object({
 });
 var BaseNotificationParamsSchema = z.object({
   /**
-   * This parameter name is reserved by MCP to allow clients and servers to attach additional metadata to their notifications.
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
    */
   _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
@@ -10336,7 +10338,8 @@ var NotificationSchema = z.object({
 });
 var ResultSchema = z.object({
   /**
-   * This result property is reserved by the protocol to allow clients and servers to attach additional metadata to their responses.
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
    */
   _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
@@ -10407,10 +10410,22 @@ var CancelledNotificationSchema = NotificationSchema.extend({
     reason: z.string().optional()
   })
 });
-var ImplementationSchema = z.object({
+var BaseMetadataSchema = z.object({
+  /** Intended for programmatic or logical use, but used as a display name in past specs or fallback */
   name: z.string(),
-  version: z.string()
+  /**
+  * Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+  * even by those unfamiliar with domain-specific terminology.
+  *
+  * If not provided, the name should be used for display (except for Tool,
+  * where `annotations.title` should be given precedence over using `name`,
+  * if present).
+  */
+  title: z.optional(z.string())
 }).passthrough();
+var ImplementationSchema = BaseMetadataSchema.extend({
+  version: z.string()
+});
 var ClientCapabilitiesSchema = z.object({
   /**
    * Experimental, non-standard capabilities that the client supports.
@@ -10420,6 +10435,10 @@ var ClientCapabilitiesSchema = z.object({
    * Present if the client supports sampling from an LLM.
    */
   sampling: z.optional(z.object({}).passthrough()),
+  /**
+   * Present if the client supports eliciting user input.
+   */
+  elicitation: z.optional(z.object({}).passthrough()),
   /**
    * Present if the client supports listing roots.
    */
@@ -10554,7 +10573,12 @@ var ResourceContentsSchema = z.object({
   /**
    * The MIME type of this resource, if known.
    */
-  mimeType: z.optional(z.string())
+  mimeType: z.optional(z.string()),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
 var TextResourceContentsSchema = ResourceContentsSchema.extend({
   /**
@@ -10568,17 +10592,11 @@ var BlobResourceContentsSchema = ResourceContentsSchema.extend({
    */
   blob: z.string().base64()
 });
-var ResourceSchema = z.object({
+var ResourceSchema = BaseMetadataSchema.extend({
   /**
    * The URI of this resource.
    */
   uri: z.string(),
-  /**
-   * A human-readable name for this resource.
-   *
-   * This can be used by clients to populate UI elements.
-   */
-  name: z.string(),
   /**
    * A description of what this resource represents.
    *
@@ -10588,19 +10606,18 @@ var ResourceSchema = z.object({
   /**
    * The MIME type of this resource, if known.
    */
-  mimeType: z.optional(z.string())
-}).passthrough();
-var ResourceTemplateSchema = z.object({
+  mimeType: z.optional(z.string()),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
+});
+var ResourceTemplateSchema = BaseMetadataSchema.extend({
   /**
    * A URI template (according to RFC 6570) that can be used to construct resource URIs.
    */
   uriTemplate: z.string(),
-  /**
-   * A human-readable name for the type of resource this template refers to.
-   *
-   * This can be used by clients to populate UI elements.
-   */
-  name: z.string(),
   /**
    * A description of what this template is for.
    *
@@ -10610,8 +10627,13 @@ var ResourceTemplateSchema = z.object({
   /**
    * The MIME type for all resources that match this template. This should only be included if all resources matching this template have the same type.
    */
-  mimeType: z.optional(z.string())
-}).passthrough();
+  mimeType: z.optional(z.string()),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
+});
 var ListResourcesRequestSchema = PaginatedRequestSchema.extend({
   method: z.literal("resources/list")
 });
@@ -10680,11 +10702,7 @@ var PromptArgumentSchema = z.object({
    */
   required: z.optional(z.boolean())
 }).passthrough();
-var PromptSchema = z.object({
-  /**
-   * The name of the prompt or prompt template.
-   */
-  name: z.string(),
+var PromptSchema = BaseMetadataSchema.extend({
   /**
    * An optional description of what this prompt provides
    */
@@ -10692,8 +10710,13 @@ var PromptSchema = z.object({
   /**
    * A list of arguments to use for templating the prompt.
    */
-  arguments: z.optional(z.array(PromptArgumentSchema))
-}).passthrough();
+  arguments: z.optional(z.array(PromptArgumentSchema)),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
+});
 var ListPromptsRequestSchema = PaginatedRequestSchema.extend({
   method: z.literal("prompts/list")
 });
@@ -10718,7 +10741,12 @@ var TextContentSchema = z.object({
   /**
    * The text content of the message.
    */
-  text: z.string()
+  text: z.string(),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
 var ImageContentSchema = z.object({
   type: z.literal("image"),
@@ -10729,7 +10757,12 @@ var ImageContentSchema = z.object({
   /**
    * The MIME type of the image. Different providers may support different image types.
    */
-  mimeType: z.string()
+  mimeType: z.string(),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
 var AudioContentSchema = z.object({
   type: z.literal("audio"),
@@ -10740,20 +10773,35 @@ var AudioContentSchema = z.object({
   /**
    * The MIME type of the audio. Different providers may support different audio types.
    */
-  mimeType: z.string()
+  mimeType: z.string(),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
 var EmbeddedResourceSchema = z.object({
   type: z.literal("resource"),
-  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema])
+  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
+var ResourceLinkSchema = ResourceSchema.extend({
+  type: z.literal("resource_link")
+});
+var ContentBlockSchema = z.union([
+  TextContentSchema,
+  ImageContentSchema,
+  AudioContentSchema,
+  ResourceLinkSchema,
+  EmbeddedResourceSchema
+]);
 var PromptMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  content: z.union([
-    TextContentSchema,
-    ImageContentSchema,
-    AudioContentSchema,
-    EmbeddedResourceSchema
-  ])
+  content: ContentBlockSchema
 }).passthrough();
 var GetPromptResultSchema = ResultSchema.extend({
   /**
@@ -10804,11 +10852,7 @@ var ToolAnnotationsSchema = z.object({
    */
   openWorldHint: z.optional(z.boolean())
 }).passthrough();
-var ToolSchema = z.object({
-  /**
-   * The name of the tool.
-   */
-  name: z.string(),
+var ToolSchema = BaseMetadataSchema.extend({
   /**
    * A human-readable description of the tool.
    */
@@ -10833,8 +10877,13 @@ var ToolSchema = z.object({
   /**
    * Optional additional tool information.
    */
-  annotations: z.optional(ToolAnnotationsSchema)
-}).passthrough();
+  annotations: z.optional(ToolAnnotationsSchema),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
+});
 var ListToolsRequestSchema = PaginatedRequestSchema.extend({
   method: z.literal("tools/list")
 });
@@ -10848,12 +10897,7 @@ var CallToolResultSchema = ResultSchema.extend({
    * If the Tool does not define an outputSchema, this field MUST be present in the result.
    * For backwards compatibility, this field is always present, but it may be empty.
    */
-  content: z.array(z.union([
-    TextContentSchema,
-    ImageContentSchema,
-    AudioContentSchema,
-    EmbeddedResourceSchema
-  ])).default([]),
+  content: z.array(ContentBlockSchema).default([]),
   /**
    * An object containing structured tool output.
    *
@@ -10997,7 +11041,68 @@ var CreateMessageResultSchema = ResultSchema.extend({
     AudioContentSchema
   ])
 });
-var ResourceReferenceSchema = z.object({
+var BooleanSchemaSchema = z.object({
+  type: z.literal("boolean"),
+  title: z.optional(z.string()),
+  description: z.optional(z.string()),
+  default: z.optional(z.boolean())
+}).passthrough();
+var StringSchemaSchema = z.object({
+  type: z.literal("string"),
+  title: z.optional(z.string()),
+  description: z.optional(z.string()),
+  minLength: z.optional(z.number()),
+  maxLength: z.optional(z.number()),
+  format: z.optional(z.enum(["email", "uri", "date", "date-time"]))
+}).passthrough();
+var NumberSchemaSchema = z.object({
+  type: z.enum(["number", "integer"]),
+  title: z.optional(z.string()),
+  description: z.optional(z.string()),
+  minimum: z.optional(z.number()),
+  maximum: z.optional(z.number())
+}).passthrough();
+var EnumSchemaSchema = z.object({
+  type: z.literal("string"),
+  title: z.optional(z.string()),
+  description: z.optional(z.string()),
+  enum: z.array(z.string()),
+  enumNames: z.optional(z.array(z.string()))
+}).passthrough();
+var PrimitiveSchemaDefinitionSchema = z.union([
+  BooleanSchemaSchema,
+  StringSchemaSchema,
+  NumberSchemaSchema,
+  EnumSchemaSchema
+]);
+var ElicitRequestSchema = RequestSchema.extend({
+  method: z.literal("elicitation/create"),
+  params: BaseRequestParamsSchema.extend({
+    /**
+     * The message to present to the user.
+     */
+    message: z.string(),
+    /**
+     * The schema for the requested user input.
+     */
+    requestedSchema: z.object({
+      type: z.literal("object"),
+      properties: z.record(z.string(), PrimitiveSchemaDefinitionSchema),
+      required: z.optional(z.array(z.string()))
+    }).passthrough()
+  })
+});
+var ElicitResultSchema = ResultSchema.extend({
+  /**
+   * The user's response action.
+   */
+  action: z.enum(["accept", "reject", "cancel"]),
+  /**
+   * The collected user input content (only present if action is "accept").
+   */
+  content: z.optional(z.record(z.string(), z.unknown()))
+});
+var ResourceTemplateReferenceSchema = z.object({
   type: z.literal("ref/resource"),
   /**
    * The URI or URI template of the resource.
@@ -11014,7 +11119,7 @@ var PromptReferenceSchema = z.object({
 var CompleteRequestSchema = RequestSchema.extend({
   method: z.literal("completion/complete"),
   params: BaseRequestParamsSchema.extend({
-    ref: z.union([PromptReferenceSchema, ResourceReferenceSchema]),
+    ref: z.union([PromptReferenceSchema, ResourceTemplateReferenceSchema]),
     /**
      * The argument's information
      */
@@ -11027,7 +11132,13 @@ var CompleteRequestSchema = RequestSchema.extend({
        * The value of the argument to use for completion matching.
        */
       value: z.string()
-    }).passthrough()
+    }).passthrough(),
+    context: z.optional(z.object({
+      /**
+       * Previously-resolved variables in a URI template or prompt.
+       */
+      arguments: z.optional(z.record(z.string(), z.string()))
+    }))
   })
 });
 var CompleteResultSchema = ResultSchema.extend({
@@ -11054,7 +11165,12 @@ var RootSchema = z.object({
   /**
    * An optional name for the root.
    */
-  name: z.optional(z.string())
+  name: z.optional(z.string()),
+  /**
+   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
+   * for notes on _meta usage.
+   */
+  _meta: z.optional(z.object({}).passthrough())
 }).passthrough();
 var ListRootsRequestSchema = RequestSchema.extend({
   method: z.literal("roots/list")
@@ -11089,11 +11205,13 @@ var ClientNotificationSchema = z.union([
 var ClientResultSchema = z.union([
   EmptyResultSchema,
   CreateMessageResultSchema,
+  ElicitResultSchema,
   ListRootsResultSchema
 ]);
 var ServerRequestSchema = z.union([
   PingRequestSchema,
   CreateMessageRequestSchema,
+  ElicitRequestSchema,
   ListRootsRequestSchema
 ]);
 var ServerNotificationSchema = z.union([
@@ -11525,6 +11643,9 @@ var Client = class extends Protocol {
       }
       this._serverCapabilities = result.capabilities;
       this._serverVersion = result.serverInfo;
+      if (transport2.setProtocolVersion) {
+        transport2.setProtocolVersion(result.protocolVersion);
+      }
       this._instructions = result.instructions;
       await this.notification({
         method: "notifications/initialized"
@@ -11616,6 +11737,11 @@ var Client = class extends Protocol {
       case "sampling/createMessage":
         if (!this._capabilities.sampling) {
           throw new Error(`Client does not support sampling capability (required for ${method})`);
+        }
+        break;
+      case "elicitation/create":
+        if (!this._capabilities.elicitation) {
+          throw new Error(`Client does not support elicitation capability (required for ${method})`);
         }
         break;
       case "roots/list":
@@ -11828,6 +11954,13 @@ var OAuthTokenRevocationRequestSchema = z.object({
   token_type_hint: z.string().optional()
 }).strip();
 
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth-utils.js
+function resourceUrlFromServerUrl(url) {
+  const resourceURL = new URL(url.href);
+  resourceURL.hash = "";
+  return resourceURL;
+}
+
 // node_modules/@modelcontextprotocol/sdk/dist/esm/client/auth.js
 var UnauthorizedError = class extends Error {
   constructor(message) {
@@ -11835,15 +11968,17 @@ var UnauthorizedError = class extends Error {
   }
 };
 async function auth(provider, { serverUrl: serverUrl2, authorizationCode, scope, resourceMetadataUrl }) {
+  let resourceMetadata;
   let authorizationServerUrl = serverUrl2;
   try {
-    const resourceMetadata = await discoverOAuthProtectedResourceMetadata(resourceMetadataUrl || serverUrl2);
+    resourceMetadata = await discoverOAuthProtectedResourceMetadata(serverUrl2, { resourceMetadataUrl });
     if (resourceMetadata.authorization_servers && resourceMetadata.authorization_servers.length > 0) {
       authorizationServerUrl = resourceMetadata.authorization_servers[0];
     }
   } catch (error) {
     console.warn("Could not load OAuth Protected Resource metadata, falling back to /.well-known/oauth-authorization-server", error);
   }
+  const resource = await selectResourceURL(serverUrl2, provider, resourceMetadata);
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
   let clientInformation = await Promise.resolve(provider.clientInformation());
   if (!clientInformation) {
@@ -11867,7 +12002,8 @@ async function auth(provider, { serverUrl: serverUrl2, authorizationCode, scope,
       clientInformation,
       authorizationCode,
       codeVerifier: codeVerifier2,
-      redirectUri: provider.redirectUrl
+      redirectUri: provider.redirectUrl,
+      resource
     });
     await provider.saveTokens(tokens2);
     return "AUTHORIZED";
@@ -11878,7 +12014,8 @@ async function auth(provider, { serverUrl: serverUrl2, authorizationCode, scope,
       const newTokens = await refreshAuthorization(authorizationServerUrl, {
         metadata,
         clientInformation,
-        refreshToken: tokens.refresh_token
+        refreshToken: tokens.refresh_token,
+        resource
       });
       await provider.saveTokens(newTokens);
       return "AUTHORIZED";
@@ -11892,11 +12029,22 @@ async function auth(provider, { serverUrl: serverUrl2, authorizationCode, scope,
     clientInformation,
     state,
     redirectUrl: provider.redirectUrl,
-    scope: scope || provider.clientMetadata.scope
+    scope: scope || provider.clientMetadata.scope,
+    resource
   });
   await provider.saveCodeVerifier(codeVerifier);
   await provider.redirectToAuthorization(authorizationUrl);
   return "REDIRECT";
+}
+async function selectResourceURL(serverUrl2, provider, resourceMetadata) {
+  if (provider.validateResourceURL) {
+    return await provider.validateResourceURL(serverUrl2, resourceMetadata === null || resourceMetadata === void 0 ? void 0 : resourceMetadata.resource);
+  }
+  const resource = resourceUrlFromServerUrl(typeof serverUrl2 === "string" ? new URL(serverUrl2) : serverUrl2);
+  if (resourceMetadata && resourceMetadata.resource !== resource.href) {
+    throw new Error(`Protected resource ${resourceMetadata.resource} does not match expected ${resource}`);
+  }
+  return resource;
 }
 function extractResourceMetadataUrl(res) {
   const authenticateHeader = res.headers.get("WWW-Authenticate");
@@ -11975,7 +12123,7 @@ async function discoverOAuthMetadata(authorizationServerUrl, opts) {
   }
   return OAuthMetadataSchema.parse(await response.json());
 }
-async function startAuthorization(authorizationServerUrl, { metadata, clientInformation, redirectUrl, scope, state }) {
+async function startAuthorization(authorizationServerUrl, { metadata, clientInformation, redirectUrl, scope, state, resource }) {
   const responseType = "code";
   const codeChallengeMethod = "S256";
   let authorizationUrl;
@@ -12004,9 +12152,12 @@ async function startAuthorization(authorizationServerUrl, { metadata, clientInfo
   if (scope) {
     authorizationUrl.searchParams.set("scope", scope);
   }
+  if (resource) {
+    authorizationUrl.searchParams.set("resource", resource.href);
+  }
   return { authorizationUrl, codeVerifier };
 }
-async function exchangeAuthorization(authorizationServerUrl, { metadata, clientInformation, authorizationCode, codeVerifier, redirectUri }) {
+async function exchangeAuthorization(authorizationServerUrl, { metadata, clientInformation, authorizationCode, codeVerifier, redirectUri, resource }) {
   const grantType = "authorization_code";
   let tokenUrl;
   if (metadata) {
@@ -12027,6 +12178,9 @@ async function exchangeAuthorization(authorizationServerUrl, { metadata, clientI
   if (clientInformation.client_secret) {
     params.set("client_secret", clientInformation.client_secret);
   }
+  if (resource) {
+    params.set("resource", resource.href);
+  }
   const response = await fetch(tokenUrl, {
     method: "POST",
     headers: {
@@ -12039,7 +12193,7 @@ async function exchangeAuthorization(authorizationServerUrl, { metadata, clientI
   }
   return OAuthTokensSchema.parse(await response.json());
 }
-async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken }) {
+async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken, resource }) {
   const grantType = "refresh_token";
   let tokenUrl;
   if (metadata) {
@@ -12057,6 +12211,9 @@ async function refreshAuthorization(authorizationServerUrl, { metadata, clientIn
   });
   if (clientInformation.client_secret) {
     params.set("client_secret", clientInformation.client_secret);
+  }
+  if (resource) {
+    params.set("resource", resource.href);
   }
   const response = await fetch(tokenUrl, {
     method: "POST",
@@ -12264,6 +12421,9 @@ var StreamableHTTPClientTransport = class {
     }
     if (this._sessionId) {
       headers["mcp-session-id"] = this._sessionId;
+    }
+    if (this._protocolVersion) {
+      headers["mcp-protocol-version"] = this._protocolVersion;
     }
     return new Headers({ ...headers, ...(_a2 = this._requestInit) === null || _a2 === void 0 ? void 0 : _a2.headers });
   }
@@ -12507,6 +12667,12 @@ var StreamableHTTPClientTransport = class {
       (_b = this.onerror) === null || _b === void 0 ? void 0 : _b.call(this, error);
       throw error;
     }
+  }
+  setProtocolVersion(version) {
+    this._protocolVersion = version;
+  }
+  get protocolVersion() {
+    return this._protocolVersion;
   }
 };
 

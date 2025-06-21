@@ -63470,6 +63470,7 @@ var StreamableHTTPServerTransport = class {
       const isInitializationRequest = messages.some(isInitializeRequest);
       if (isInitializationRequest) {
         if (this._initialized && this.sessionId !== void 0) {
+          console.log("WTF");
           res.writeHead(400).end(JSON.stringify({
             jsonrpc: "2.0",
             error: {

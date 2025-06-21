@@ -9,21 +9,23 @@ console.error("Starting Streamable HTTP server...");
 const app = express();
 
 // Data shared across all server/transport pairs
-const transports: Map<string, StreamableHTTPServerTransport> = new Map<string, StreamableHTTPServerTransport>(); // Transports by sessionId
+const transports: Map<string, StreamableHTTPServerTransport> = new Map<
+  string,
+  StreamableHTTPServerTransport
+>(); // Transports by sessionId
 const subscriptions: Map<string, Set<string>> = new Map<string, Set<string>>(); // Subscriber sessionIds by uri
 
-app.post('/mcp', async (req: Request, res: Response) => {
-  console.error('Received MCP POST request');
+app.post("/mcp", async (req: Request, res: Response) => {
+  console.error("Received MCP POST request");
   try {
     // Check for existing session ID
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
     let transport: StreamableHTTPServerTransport;
 
     if (sessionId && transports.has(sessionId)) {
       // Reuse existing transport
       transport = transports.get(sessionId)!;
     } else if (!sessionId) {
-
       const { server } = createServer(transports, subscriptions);
 
       // New initialization request
@@ -36,14 +38,16 @@ app.post('/mcp', async (req: Request, res: Response) => {
           // This avoids race conditions where requests might come in before the session is stored
           console.error(`Session initialized with ID: ${sessionId}`);
           transports.set(sessionId, transport);
-        }
+        },
       });
 
       // Set up onclose handler to clean up transport when closed
       server.onclose = async () => {
         const sid = transport.sessionId;
         if (sid && transports.has(sid)) {
-          console.error(`Transport closed for session ${sid}, removing from transports map`);
+          console.error(
+            `Transport closed for session ${sid}, removing from transports map`,
+          );
           transports.delete(sid);
         }
       };
@@ -74,10 +78,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
     } else {
       // Invalid request - no session ID or not initialization request
       res.status(400).json({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         error: {
           code: -32000,
-          message: 'Bad Request: No valid session ID provided',
+          message: "Bad Request: No valid session ID provided",
         },
         id: req?.body?.id,
       });
@@ -88,13 +92,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
     // The existing transport is already connected to the server
     await transport.handleRequest(req, res);
   } catch (error) {
-    console.error('Error handling MCP request:', error);
+    console.error("Error handling MCP request:", error);
     if (!res.headersSent) {
       res.status(500).json({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         error: {
           code: -32603,
-          message: 'Internal server error',
+          message: "Internal server error",
         },
         id: req?.body?.id,
       });
@@ -104,15 +108,15 @@ app.post('/mcp', async (req: Request, res: Response) => {
 });
 
 // Handle GET requests for SSE streams (using built-in support from StreamableHTTP)
-app.get('/mcp', async (req: Request, res: Response) => {
-  console.error('Received MCP GET request');
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+app.get("/mcp", async (req: Request, res: Response) => {
+  console.error("Received MCP GET request");
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
     res.status(400).json({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       error: {
         code: -32000,
-        message: 'Bad Request: No valid session ID provided',
+        message: "Bad Request: No valid session ID provided",
       },
       id: req?.body?.id,
     });
@@ -120,7 +124,7 @@ app.get('/mcp', async (req: Request, res: Response) => {
   }
 
   // Check for Last-Event-ID header for resumability
-  const lastEventId = req.headers['last-event-id'] as string | undefined;
+  const lastEventId = req.headers["last-event-id"] as string | undefined;
   if (lastEventId) {
     console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
   } else {
@@ -132,33 +136,35 @@ app.get('/mcp', async (req: Request, res: Response) => {
 });
 
 // Handle DELETE requests for session termination (according to MCP spec)
-app.delete('/mcp', async (req: Request, res: Response) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+app.delete("/mcp", async (req: Request, res: Response) => {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
     res.status(400).json({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       error: {
         code: -32000,
-        message: 'Bad Request: No valid session ID provided',
+        message: "Bad Request: No valid session ID provided",
       },
       id: req?.body?.id,
     });
     return;
   }
 
-  console.error(`Received session termination request for session ${sessionId}`);
+  console.error(
+    `Received session termination request for session ${sessionId}`,
+  );
 
   try {
     const transport = transports.get(sessionId);
     await transport!.handleRequest(req, res);
   } catch (error) {
-    console.error('Error handling session termination:', error);
+    console.error("Error handling session termination:", error);
     if (!res.headersSent) {
       res.status(500).json({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         error: {
           code: -32603,
-          message: 'Error handling session termination',
+          message: "Error handling session termination",
         },
         id: req?.body?.id,
       });
@@ -192,4 +198,4 @@ process.on("SIGINT", async () => {
   process.exit(0);
 });
 
-export {app, transports};
+export { app, transports };

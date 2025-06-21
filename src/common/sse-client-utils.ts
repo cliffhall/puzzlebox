@@ -148,7 +148,7 @@ export async function establishSseSession(
         while (
           !promiseSettled &&
           (messageEndIndex = buffer.indexOf("\n\n")) !== -1
-          ) {
+        ) {
           const message = buffer.substring(0, messageEndIndex);
           buffer = buffer.substring(messageEndIndex + 2); // Consume message and delimiter
           if (!promiseSettled) {
@@ -419,7 +419,7 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
       while (
         !promiseSettled &&
         (messageEndIndex = sseBuffer.indexOf("\n\n")) !== -1
-        ) {
+      ) {
         const message = sseBuffer.substring(0, messageEndIndex);
         sseBuffer = sseBuffer.substring(messageEndIndex + 2); // Consume message + delimiter
 
