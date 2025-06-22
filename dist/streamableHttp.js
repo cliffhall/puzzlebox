@@ -63470,7 +63470,6 @@ var StreamableHTTPServerTransport = class {
       const isInitializationRequest = messages.some(isInitializeRequest);
       if (isInitializationRequest) {
         if (this._initialized && this.sessionId !== void 0) {
-          console.log("WTF");
           res.writeHead(400).end(JSON.stringify({
             jsonrpc: "2.0",
             error: {
@@ -66103,7 +66102,9 @@ app.delete("/mcp", async (req, res) => {
     });
     return;
   }
-  console.error(`Received session termination request for session ${sessionId}`);
+  console.error(
+    `Received session termination request for session ${sessionId}`
+  );
   try {
     const transport = transports.get(sessionId);
     await transport.handleRequest(req, res);
