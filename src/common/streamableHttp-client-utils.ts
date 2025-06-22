@@ -1,6 +1,6 @@
 import http from "http";
 import { AddressInfo } from "net";
-import { JsonRpcRequest } from "./sse-client-utils.ts"; // Re-using interfaces
+import { JsonRpcRequest } from "./types.ts";
 
 // --- Store active connections ---
 export interface ActiveStreamableConnection {
@@ -60,7 +60,7 @@ export async function establishStreamableSession(
       if (!newSessionId) {
         return reject(new Error("Server did not return mcp-session-id header"));
       }
-      res.resume(); // Consume response body
+      res.resume();
       resolve(newSessionId);
     });
 

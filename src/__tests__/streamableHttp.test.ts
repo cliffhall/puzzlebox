@@ -1,5 +1,3 @@
-// /Users/cliffhall/Projects/puzzlebox/src/__tests__/streamableHttp.test.ts
-
 import http from "http";
 import { AddressInfo } from "net";
 import { getTestPuzzleConfig } from "../common/utils.ts";
@@ -8,7 +6,7 @@ import {
   ToolDefinition,
   ToolsListJsonResponse,
   ToolCallJsonResponse,
-} from "../common/sse-client-utils.ts"; // Re-using interfaces
+} from "../common/types.ts";
 import {
   ActiveStreamableConnection,
   establishStreamableSession,
@@ -239,7 +237,7 @@ describe("Puzzlebox Server (Streamable HTTP)", () => {
     expect(toolNames).toEqual(
       expect.arrayContaining(["add_puzzle", "count_puzzles"]),
     );
-  }, 20000); // <--- INCREASED TEST TIMEOUT
+  }, 20000);
 
   it("POST /mcp 'tools/call' - add_puzzle should add a puzzle and return its ID", async () => {
     const { sessionId, eventStream } = await establishStreamableSession(
@@ -267,7 +265,7 @@ describe("Puzzlebox Server (Streamable HTTP)", () => {
     const addResult = JSON.parse(sseResult.result.content[0].text);
     expect(addResult).toHaveProperty("success", true);
     expect(addResult).toHaveProperty("puzzleId");
-  }, 20000); // <--- INCREASED TEST TIMEOUT
+  }, 20000);
 
   it("POST /mcp 'tools/call' - count_puzzles should return correct count", async () => {
     const { sessionId, eventStream } = await establishStreamableSession(
@@ -296,7 +294,7 @@ describe("Puzzlebox Server (Streamable HTTP)", () => {
 
     const countResult = JSON.parse(sseResult.result.content[0].text);
     expect(countResult).toHaveProperty("count", 3);
-  }, 25000); // <--- INCREASED TEST TIMEOUT (more operations)
+  }, 25000);
 });
 
 /**

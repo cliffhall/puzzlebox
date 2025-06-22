@@ -5,7 +5,7 @@
     "build": "node esbuild.config.js && echo '{\"type\": \"commonjs\"}' > dist/package.json",
     "start:sse": "node dist/index.js",
     "start:streamablHttp": "node dist/streamableHttp.js",
-    "test": "jest --silent=false",
+    "test": "jest --silent",
     "repl": "node dist/repl.js",
     "inspector": "npx @modelcontextprotocol/inspector",
     "format": "prettier --write ./src",

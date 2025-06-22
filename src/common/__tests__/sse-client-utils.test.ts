@@ -3,13 +3,12 @@
 import http from "http";
 import { AddressInfo } from "net";
 import { Readable } from "stream";
+import { JsonRpcResponse, ToolsListJsonResponse } from "../types.ts";
 import {
   establishSseSession,
   sendJsonRpcMessage,
   waitForSseResponse,
   ActiveSseConnection,
-  JsonRpcResponse,
-  ToolsListJsonResponse,
 } from "../sse-client-utils.ts";
 
 // Helper to delay execution

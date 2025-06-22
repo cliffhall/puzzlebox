@@ -2,16 +2,17 @@ import http from "http";
 import { AddressInfo } from "net";
 import { getTestPuzzleConfig } from "../common/utils.ts";
 import {
+  establishSseSession,
+  sendJsonRpcMessage,
+  waitForSseResponse,
+  ActiveSseConnection,
+} from "../common/sse-client-utils.ts";
+import {
   JsonRpcRequest,
   ToolDefinition,
   ToolsListJsonResponse,
   ToolCallJsonResponse,
-  ActiveSseConnection,
-  establishSseSession,
-  sendJsonRpcMessage,
-  waitForSseResponse,
-} from "../common/sse-client-utils.ts";
-
+} from "../common/types.ts";
 // --- Global Map for Active Connections ---
 const activeSseConnections: Map<string, ActiveSseConnection> = new Map();
 

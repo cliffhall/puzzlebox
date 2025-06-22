@@ -54,7 +54,6 @@ app.post("/mcp", async (req: Request, res: Response) => {
       // --- *** FORCE A YIELD - IMPORTANT FOR TEST ENVIRONMENT *** ---
       // Give the event loop a chance to process the operation.
       await new Promise((resolve) => setImmediate(resolve));
-      // --- *** END FORCE YIELD *** ---
 
       // Now, handle the initialization request.
       // This will trigger onsessioninitialized and send the response to the client.
@@ -79,37 +78,68 @@ app.post("/mcp", async (req: Request, res: Response) => {
   }
 });
 
-// The GET and DELETE handlers remain the same as they correctly
-// find the transport and delegate the request.
-
-app.get("/mcp", async (req: Request, res: Response) => {
-  console.log("Received MCP GET request");
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+// Handle GET requests for SSE streams (using built-in support from StreamableHTTP)
+app.get('/mcp', async (req: Request, res: Response) => {
+  console.error('Received MCP GET request');
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(404).json({
-      jsonrpc: "2.0",
-      error: { code: -32000, message: "Session not found" },
-      id: null,
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Bad Request: No valid session ID provided',
+      },
+      id: req?.body?.id,
     });
     return;
   }
-  const transport = transports.get(sessionId)!;
-  await transport.handleRequest(req, res);
+
+  // Check for Last-Event-ID header for resumability
+  const lastEventId = req.headers['last-event-id'] as string | undefined;
+  if (lastEventId) {
+    console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
+  } else {
+    console.error(`Establishing new SSE stream for session ${sessionId}`);
+  }
+
+  const transport = transports.get(sessionId);
+  await transport!.handleRequest(req, res);
 });
 
-app.delete("/mcp", async (req: Request, res: Response) => {
-  console.log("Received MCP DELETE request");
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+// Handle DELETE requests for session termination (according to MCP spec)
+app.delete('/mcp', async (req: Request, res: Response) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(404).json({
-      jsonrpc: "2.0",
-      error: { code: -32000, message: "Session not found" },
-      id: null,
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Bad Request: No valid session ID provided',
+      },
+      id: req?.body?.id,
     });
     return;
   }
-  const transport = transports.get(sessionId)!;
-  await transport.handleRequest(req, res);
+
+  console.error(`Received session termination request for session ${sessionId}`);
+
+  try {
+    const transport = transports.get(sessionId);
+    await transport!.handleRequest(req, res);
+  } catch (error) {
+    console.error('Error handling session termination:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Error handling session termination',
+        },
+        id: req?.body?.id,
+      });
+      return;
+    }
+  }
 });
 
 // Conditional listen for running standalone

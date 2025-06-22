@@ -1,43 +1,9 @@
 import http from "http";
 import { AddressInfo } from "net";
-
-export interface JsonRpcRequest {
-  jsonrpc: "2.0";
-  id: number | string;
-  method: string;
-  params?: unknown;
-}
-
-export interface JsonRpcResponse {
-  jsonrpc: "2.0";
-  id: number | string | null;
-  result?: unknown;
-  error?: { code: number; message: string; data?: unknown };
-}
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: object;
-}
-
-export interface ToolsListResult {
-  tools: ToolDefinition[];
-}
-
-export interface ToolsListJsonResponse extends JsonRpcResponse {
-  id: number;
-  result: ToolsListResult;
-}
-
-export interface ToolCallResult {
-  content: { type: string; text: string }[];
-}
-
-export interface ToolCallJsonResponse extends JsonRpcResponse {
-  id: number;
-  result: ToolCallResult;
-}
+import {
+  JsonRpcRequest,
+  JsonRpcResponse
+} from "./types.ts";
 
 // --- Store active SSE connections (Response Streams) ---
 export interface ActiveSseConnection {
@@ -380,11 +346,10 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
       if (promiseSettled) return;
       promiseSettled = true;
       if (timeoutId) clearTimeout(timeoutId);
-      // Crucially, remove listeners to prevent leaks or interference
       sseResponseStream.removeListener("data", dataHandler);
       sseResponseStream.removeListener("error", errorHandler);
       sseResponseStream.removeListener("close", closeHandler);
-      sseResponseStream.removeListener("end", closeHandler); // Also listen for end
+      sseResponseStream.removeListener("end", closeHandler);
 
       if (result) {
         console.log(`SSE_WAIT: Resolving SSE wait for id ${expectedId}.`);
@@ -407,7 +372,7 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
 
     const dataHandler = (chunk: Buffer | string) => {
       if (promiseSettled) return;
-      const chunkStr = chunk.toString(); // Ensure we are working with a string
+      const chunkStr = chunk.toString();
       console.log(
         `SSE_WAIT: Stream for id ${expectedId} received chunk: ${chunkStr.replace(/\n/g, "\\n")}`,
       );
@@ -512,7 +477,7 @@ export async function waitForSseResponse<T extends JsonRpcResponse>(
     sseResponseStream.on("data", dataHandler);
     sseResponseStream.once("error", errorHandler);
     sseResponseStream.once("close", closeHandler);
-    sseResponseStream.once("end", closeHandler); // Also handle 'end' which signifies closure
+    sseResponseStream.once("end", closeHandler);
 
     // Set timeout for waiting for the specific response
     timeoutId = setTimeout(() => {

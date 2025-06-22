@@ -66013,7 +66013,7 @@ var createServer = (transports2, subscriptions2) => {
 
 // src/streamableHttp.ts
 var import_node_crypto2 = require("node:crypto");
-console.error("Starting Streamable HTTP server...");
+console.log("Starting Streamable HTTP server...");
 var app = (0, import_express.default)();
 var transports = /* @__PURE__ */ new Map();
 var subscriptions = /* @__PURE__ */ new Map();
@@ -66031,15 +66031,15 @@ app.post("/mcp", async (req, res) => {
         sessionIdGenerator: () => (0, import_node_crypto2.randomUUID)(),
         eventStore,
         onsessioninitialized: (newSessionId) => {
-          console.error(`Session initialized with ID: ${newSessionId}`);
+          console.log(`Session initialized with ID: ${newSessionId}`);
           transports.set(newSessionId, transport);
         }
       });
-      server.onclose = () => {
+      server.onclose = async () => {
         const sid = transport.sessionId;
         if (sid && transports.has(sid)) {
-          console.error(
-            `Server closed for session ${sid}, removing from transports map`
+          console.log(
+            `Server closed for session ${sid}, removing associated transport from transports map`
           );
           transports.delete(sid);
         }
@@ -66055,7 +66055,7 @@ app.post("/mcp", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error handling MCP POST request:", error);
+    console.log("Error handling MCP POST request:", error);
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",
@@ -66066,45 +66066,74 @@ app.post("/mcp", async (req, res) => {
   }
 });
 app.get("/mcp", async (req, res) => {
+  var _a;
   console.error("Received MCP GET request");
   const sessionId = req.headers["mcp-session-id"];
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(404).json({
+    res.status(400).json({
       jsonrpc: "2.0",
-      error: { code: -32e3, message: "Session not found" },
-      id: null
+      error: {
+        code: -32e3,
+        message: "Bad Request: No valid session ID provided"
+      },
+      id: (_a = req == null ? void 0 : req.body) == null ? void 0 : _a.id
     });
     return;
+  }
+  const lastEventId = req.headers["last-event-id"];
+  if (lastEventId) {
+    console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
+  } else {
+    console.error(`Establishing new SSE stream for session ${sessionId}`);
   }
   const transport = transports.get(sessionId);
   await transport.handleRequest(req, res);
 });
 app.delete("/mcp", async (req, res) => {
-  console.error("Received MCP DELETE request");
+  var _a, _b;
   const sessionId = req.headers["mcp-session-id"];
   if (!sessionId || !transports.has(sessionId)) {
-    res.status(404).json({
+    res.status(400).json({
       jsonrpc: "2.0",
-      error: { code: -32e3, message: "Session not found" },
-      id: null
+      error: {
+        code: -32e3,
+        message: "Bad Request: No valid session ID provided"
+      },
+      id: (_a = req == null ? void 0 : req.body) == null ? void 0 : _a.id
     });
     return;
   }
-  const transport = transports.get(sessionId);
-  await transport.handleRequest(req, res);
+  console.error(`Received session termination request for session ${sessionId}`);
+  try {
+    const transport = transports.get(sessionId);
+    await transport.handleRequest(req, res);
+  } catch (error) {
+    console.error("Error handling session termination:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Error handling session termination"
+        },
+        id: (_b = req == null ? void 0 : req.body) == null ? void 0 : _b.id
+      });
+      return;
+    }
+  }
 });
 if (process.env.NODE_ENV !== "test") {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.error(`MCP Streamable HTTP Server listening on port ${PORT}`);
+    console.log(`MCP Streamable HTTP Server listening on port ${PORT}`);
   });
 }
 process.on("SIGINT", async () => {
-  console.error("Shutting down server...");
+  console.log("Shutting down server...");
   for (const transport of transports.values()) {
     await transport.close();
   }
-  console.error("Server shutdown complete.");
+  console.log("Server shutdown complete.");
   process.exit(0);
 });
 // Annotate the CommonJS export names for ESM import in node:
