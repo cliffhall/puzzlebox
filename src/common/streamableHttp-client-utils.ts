@@ -2,7 +2,7 @@
 
 import http from "http";
 import { AddressInfo } from "net";
-import { JsonRpcRequest } from "./types.ts";
+import { JsonRpcRequest, JsonRpcResponse } from "./types.ts"; // Added JsonRpcResponse
 
 // --- Store active connections ---
 export interface ActiveStreamableConnection {
@@ -113,7 +113,8 @@ export async function establishStreamableSession(
 }
 
 /**
- * Sends a JSON-RPC message via POST to the /mcp endpoint.
+ * Sends a JSON-RPC message via POST to the /mcp endpoint. This utility is for
+ * servers that acknowledge with 200/204 and send the actual response over SSE.
  * @param serverAddress The address of the test server.
  * @param sessionId The active session ID.
  * @param payload The JSON-RPC request payload.
@@ -134,7 +135,6 @@ export async function sendStreamableRpcMessage(
       method: "POST",
       headers: {
         "mcp-session-id": sessionId,
-        // FIX: The Content-Type of a request with a JSON body must be 'application/json'.
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(requestBodyString),
         Accept: "application/json, text/event-stream",
@@ -142,7 +142,6 @@ export async function sendStreamableRpcMessage(
     };
 
     const req = http.request(options, (res) => {
-      // FIX: Only resolve if status is 200 or 204. Otherwise, read body and reject.
       if (res.statusCode === 200 || res.statusCode === 204) {
         res.resume(); // Consume any response data to free up the socket
         resolve();
@@ -158,6 +157,76 @@ export async function sendStreamableRpcMessage(
         });
         res.on("error", reject); // Handle errors during body reading
       }
+    });
+
+    req.on("error", reject);
+    req.write(requestBodyString);
+    req.end();
+  });
+}
+
+/**
+ * Utility for servers that return the RPC response directly in the POST body.
+ * Sends a JSON-RPC message via POST and expects the JSON-RPC response
+ * in the body of the HTTP response.
+ */
+export async function sendRpcAndGetHttpResponse<T extends JsonRpcResponse>(
+  serverAddress: AddressInfo,
+  sessionId: string,
+  payload: JsonRpcRequest,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const requestBodyString = JSON.stringify(payload);
+
+    const options: http.RequestOptions = {
+      hostname:
+        serverAddress.address === "::" ? "localhost" : serverAddress.address,
+      port: serverAddress.port,
+      path: "/mcp",
+      method: "POST",
+      headers: {
+        "mcp-session-id": sessionId,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(requestBodyString),
+        Accept: "application/json, text/event-stream",
+      },
+    };
+
+    const req = http.request(options, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => (body += chunk));
+      res.on("error", reject);
+      res.on("end", () => {
+        if (res.statusCode !== 200) {
+          return reject(
+            new Error(
+              `POST /mcp failed with status ${res.statusCode}. Body: ${body}`,
+            ),
+          );
+        }
+        try {
+          // FIX: The server is returning the JSON response wrapped in an SSE message format.
+          // We must parse this format to extract the JSON from the 'data:' field.
+          const lines = body.trim().split('\n');
+          const dataLine = lines.find(line => line.startsWith('data: '));
+
+          if (!dataLine) {
+            throw new Error(`Response did not contain an SSE 'data:' field. Body: ${body}`);
+          }
+
+          const jsonData = dataLine.substring(6).trim();
+          const parsedResponse = JSON.parse(jsonData);
+          resolve(parsedResponse as T);
+        } catch (e) {
+          const error = e instanceof Error ? e.message : String(e);
+          reject(
+            new Error(
+              `Failed to parse SSE/JSON response from POST /mcp. Error: "${error}". Body: ${body}`,
+            ),
+          );
+        }
+      });
     });
 
     req.on("error", reject);
