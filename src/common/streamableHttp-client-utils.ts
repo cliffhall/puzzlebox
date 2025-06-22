@@ -1,3 +1,5 @@
+// src/common/streamableHttp-client-utils.ts
+
 import http from "http";
 import { AddressInfo } from "net";
 import { JsonRpcRequest } from "./types.ts";
@@ -99,6 +101,7 @@ export async function establishStreamableSession(
           eventStreamResponse: res,
         });
         resolve(res);
+        res.resume(); // FIX: Ensure the response stream is consumed
       });
 
       req.on("error", reject);
@@ -131,17 +134,19 @@ export async function sendStreamableRpcMessage(
       method: "POST",
       headers: {
         "mcp-session-id": sessionId,
-        "Content-Type": "application/json, text/event-stream",
+        // FIX: The Content-Type of a request with a JSON body must be 'application/json'.
+        "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(requestBodyString),
         Accept: "application/json, text/event-stream",
       },
     };
 
     const req = http.request(options, (res) => {
-      // For Streamable HTTP, the response to the POST is the result itself.
-      // We don't need to check for a 202; we just need to know the request completed.
-      // The actual result is checked via the event stream.
-      if (res.statusCode !== 200 && res.statusCode !== 204) {
+      // FIX: Only resolve if status is 200 or 204. Otherwise, read body and reject.
+      if (res.statusCode === 200 || res.statusCode === 204) {
+        res.resume(); // Consume any response data to free up the socket
+        resolve();
+      } else {
         let body = "";
         res.on("data", (chunk) => (body += chunk));
         res.on("end", () => {
@@ -151,9 +156,8 @@ export async function sendStreamableRpcMessage(
             ),
           );
         });
+        res.on("error", reject); // Handle errors during body reading
       }
-      res.resume(); // Consume any response data to free up the socket
-      resolve();
     });
 
     req.on("error", reject);

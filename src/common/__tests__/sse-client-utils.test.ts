@@ -269,7 +269,7 @@ describe("SSE Client Utilities", () => {
 
     beforeEach(() => {
       // Create a mock stream that we can push data to
-      mockStream = new Readable({ read() {} }); // eslint-disable-line @typescript-eslint/no-empty-function
+      mockStream = new Readable({ read() {} });
     });
 
     it("should resolve with the correct parsed response when its ID matches", async () => {
