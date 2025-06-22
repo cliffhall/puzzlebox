@@ -5,9 +5,9 @@
 
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts  [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) as dynamic resources that clients can subscribe to and be updated when their state changes.
 
-## Status
+## Feature Roadmap and Status
 <details>
-<summary>Feature Roadmap and Status</summary>
+<summary>A work in progress. Much is done, a few bits remain to be done.</summary>
 
 * [x] Unit tests for tool code
 * [x] Integration tests for MCP server (both SSE and StreamableHttp)
@@ -19,7 +19,7 @@ An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main)
 * [x] Receive update notifications when puzzles change
 * [x] Get puzzle snapshot (current state and available actions)
 * [x] Change puzzle state by performing action on puzzle
-* [ ] Resource creation by puzzle state
+* [ ] Resource creation by puzzle state (used by agents and guard prompts)
 * [ ] Transition guard prompt creation (uses resources by state)
 * [ ] Transition guard via sampling
 * [ ] Command line REPL
