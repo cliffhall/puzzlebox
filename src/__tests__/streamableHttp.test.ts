@@ -1,5 +1,3 @@
-// src/__tests__/streamableHttp.test.ts
-
 import http from "http";
 import { AddressInfo } from "net";
 import { getTestPuzzleConfig } from "../common/utils.ts";

@@ -1,5 +1,3 @@
-// src/common/__tests__/streamableHttp-client-utils.test.ts
-
 import http from "http";
 import { AddressInfo } from "net";
 

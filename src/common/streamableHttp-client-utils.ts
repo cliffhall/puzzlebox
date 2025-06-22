@@ -1,5 +1,3 @@
-// src/common/streamableHttp-client-utils.ts
-
 import http from "http";
 import { AddressInfo } from "net";
 import { JsonRpcRequest, JsonRpcResponse } from "./types.ts"; // Added JsonRpcResponse
