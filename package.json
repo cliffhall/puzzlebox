@@ -2,14 +2,16 @@
   "name": "puzzlebox",
   "version": "1.0.0",
   "scripts": {
-    "build": "node esbuild.config.cjs && echo '{\"type\": \"commonjs\"}' > dist/package.json",
-    "start": "node dist/index.js",
+    "build": "node esbuild.config.js && echo '{\"type\": \"commonjs\"}' > dist/package.json",
+    "start:sse": "node dist/index.js",
+    "start:streamablHttp": "node dist/streamableHttp.js",
+    "test": "jest --silent",
+    "repl": "node dist/repl.js",
     "inspector": "npx @modelcontextprotocol/inspector",
     "format": "prettier --write ./src",
     "typecheck": "tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint src",
     "lint:fix": "eslint ./src --fix",
-    "test": "jest --silent",
     "coverage":  "jest --coverage"
   },
   "files": [
@@ -33,8 +35,8 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/inspector": "^0.8.2",
-    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@modelcontextprotocol/inspector": "^0.14.3",
+    "@modelcontextprotocol/sdk": "^1.13.0",
     "@types/supertest": "^6.0.3",
     "mcp-proxy": "^2.11.0",
     "node-fetch": "^2.7.0",

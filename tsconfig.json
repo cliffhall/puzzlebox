@@ -4,6 +4,7 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
