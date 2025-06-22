@@ -377,7 +377,7 @@ describe("Streamable HTTP Client Utilities", () => {
 
     it("should reject on a connection error", async () => {
       // Ensure any client connections from beforeEach are destroyed before closing the server
-      activeConnections.forEach(conn => {
+      activeConnections.forEach((conn) => {
         if (conn.eventStreamRequest && !conn.eventStreamRequest.destroyed) {
           conn.eventStreamRequest.destroy();
         }

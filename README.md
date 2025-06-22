@@ -5,6 +5,27 @@
 
 An [MCP server](https://github.com/modelcontextprotocol/specification/tree/main) that hosts  [finite state machines](https://en.wikipedia.org/wiki/Finite-state_machine) as dynamic resources that clients can subscribe to and be updated when their state changes.
 
+## Status
+<details>
+<summary>Feature Roadmap and Status</summary>
+
+* [x] Unit tests for tool code
+* [x] Integration tests for MCP server (both SSE and StreamableHttp)
+* [x] SSE transport
+* [x] StreamableHttp transport
+* [x] Multiple simultaneous client connections (both transports)
+* [x] Create puzzles (state machines) as dynamic resources
+* [x] Subscribe to puzzles
+* [x] Receive update notifications when puzzles change
+* [x] Get puzzle snapshot (current state and available actions)
+* [x] Change puzzle state by performing action on puzzle
+* [ ] Resource creation by puzzle state
+* [ ] Transition guard prompt creation (uses resources by state)
+* [ ] Transition guard via sampling
+* [ ] Command line REPL
+* [ ] Demo via REPL
+</details>
+
 ## What problem does puzzlebox address?
 
 <details>
@@ -17,7 +38,7 @@ Just as a few agents can collaborate to complete a small project, several teams 
 
 Consider enterprise-level software development processes:
 
-* A large software project typically moves through a multi-step, occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. 
+* A large software project typically moves through a multistep, occasionally backtracking path from inception to design to building to testing to documentation to marketing to production. 
 
 * Different teams are focused on different aspects over time, informed by what's gone before and with an eye toward an ever-changing goal that is refined according to lessons learned. 
 

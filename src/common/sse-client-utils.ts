@@ -1,9 +1,6 @@
 import http from "http";
 import { AddressInfo } from "net";
-import {
-  JsonRpcRequest,
-  JsonRpcResponse
-} from "./types.ts";
+import { JsonRpcRequest, JsonRpcResponse } from "./types.ts";
 
 // --- Store active SSE connections (Response Streams) ---
 export interface ActiveSseConnection {

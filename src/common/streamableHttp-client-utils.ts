@@ -206,11 +206,13 @@ export async function sendRpcAndGetHttpResponse<T extends JsonRpcResponse>(
         try {
           // FIX: The server is returning the JSON response wrapped in an SSE message format.
           // We must parse this format to extract the JSON from the 'data:' field.
-          const lines = body.trim().split('\n');
-          const dataLine = lines.find(line => line.startsWith('data: '));
+          const lines = body.trim().split("\n");
+          const dataLine = lines.find((line) => line.startsWith("data: "));
 
           if (!dataLine) {
-            throw new Error(`Response did not contain an SSE 'data:' field. Body: ${body}`);
+            throw new Error(
+              `Response did not contain an SSE 'data:' field. Body: ${body}`,
+            );
           }
 
           const jsonData = dataLine.substring(6).trim();
