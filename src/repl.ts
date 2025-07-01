@@ -47,7 +47,7 @@ async function main(): Promise<void> {
 function printHelp(): void {
   console.log("\nAvailable commands:");
   console.log(
-    "  connect [url]              - Connect to MCP server (default: http://localhost:3000/mcp)",
+    "  connect [url]  - Connect to MCP server (default: http://localhost:3000/mcp)",
   );
   console.log("  disconnect                 - Disconnect from server");
   console.log("  terminate-session          - Terminate the current session");
@@ -107,21 +107,6 @@ function commandLoop(): void {
             await callTool(toolName, toolArgs);
           }
           break;
-
-        case "greet":
-          await callGreetTool(args[1] || "MCP User");
-          break;
-
-        case "multi-greet":
-          await callMultiGreetTool(args[1] || "MCP User");
-          break;
-
-        case "start-notifications": {
-          const interval = args[1] ? parseInt(args[1], 10) : 2000;
-          const count = args[2] ? parseInt(args[2], 10) : 10;
-          await startNotifications(interval, count);
-          break;
-        }
 
         case "list-prompts":
           await listPrompts();
@@ -373,25 +358,6 @@ async function callTool(
   } catch (error) {
     console.log(`Error calling tool ${name}: ${error}`);
   }
-}
-
-async function callGreetTool(name: string): Promise<void> {
-  await callTool("greet", { name });
-}
-
-async function callMultiGreetTool(name: string): Promise<void> {
-  console.log("Calling multi-greet tool with notifications...");
-  await callTool("multi-greet", { name });
-}
-
-async function startNotifications(
-  interval: number,
-  count: number,
-): Promise<void> {
-  console.log(
-    `Starting notification stream: interval=${interval}ms, count=${count || "unlimited"}`,
-  );
-  await callTool("start-notification-stream", { interval, count });
 }
 
 async function listPrompts(): Promise<void> {
