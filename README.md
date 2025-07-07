@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cliffhall-puzzlebox-badge.png)](https://mseep.ai/app/cliffhall-puzzlebox)
+
 # puzzlebox
 ![puzzlebox](images/puzzlebox.png)
 
