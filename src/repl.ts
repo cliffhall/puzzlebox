@@ -32,6 +32,16 @@ let serverUrl = "http://localhost:3001/mcp";
 let notificationsToolLastEventId: string | undefined = undefined;
 let sessionId: string | undefined = undefined;
 
+const errorHandler = (error: Error) => {
+  if (error?.cause && JSON.stringify(error.cause).includes("ECONNREFUSED")) {
+    console.error("Connection refused. Is the MCP server running?");
+  } else if (error.message && error.message.includes("404")) {
+    console.error("Error accessing endpoint (HTTP 404)");
+  } else {
+    console.error("Error from MCP server:", error);
+  }
+};
+
 async function main(): Promise<void> {
   console.log("MCP Interactive Client");
   console.log("=====================");
@@ -46,21 +56,14 @@ async function main(): Promise<void> {
 
 function printHelp(): void {
   console.log("\nAvailable commands:");
-  console.log(
-    "  connect [url]  - Connect to MCP server (default: http://localhost:3000/mcp)",
-  );
-  console.log("  disconnect                 - Disconnect from server");
-  console.log("  terminate-session          - Terminate the current session");
-  console.log("  reconnect                  - Reconnect to the server");
-  console.log("  list-tools                 - List available tools");
-  console.log(
-    "  call-tool <name> [args]    - Call a tool with optional JSON arguments",
-  );
-  console.log(
-    "  start-notifications [interval] [count] - Start periodic notifications",
-  );
-  console.log("  list-resources             - List available resources");
   console.log("  help                       - Show this help");
+  console.log("  list-tools                 - List available tools");
+  console.log("  call-tool <name> [args]    - Call a tool with optional JSON arguments");
+  console.log("  list-resources             - List available resources");
+  console.log("  terminate-session          - Terminate the current session");
+  console.log("  connect [url]              - Connect to MCP server (default: http://localhost:3000/mcp)");
+  console.log("  disconnect                 - Disconnect from server");
+  console.log("  reconnect                  - Reconnect to the server");
   console.log("  quit                       - Exit the program");
 }
 
@@ -157,6 +160,7 @@ function commandLoop(): void {
   });
 }
 
+
 async function connect(url?: string): Promise<void> {
   if (client) {
     console.log("Already connected. Disconnect first.");
@@ -175,9 +179,7 @@ async function connect(url?: string): Promise<void> {
       name: "example-client",
       version: "1.0.0",
     });
-    client.onerror = (error) => {
-      console.error("\x1b[31mClient error:", error, "\x1b[0m");
-    };
+    client.onerror = errorHandler;
 
     transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
       sessionId: sessionId,
@@ -230,7 +232,7 @@ async function connect(url?: string): Promise<void> {
     console.log("Transport created with session ID:", sessionId);
     console.log("Connected to MCP server");
   } catch (error) {
-    console.error("Failed to connect:", error);
+    if (error instanceof Error) errorHandler(error);
     client = null;
     transport = null;
   }
@@ -320,10 +322,7 @@ async function listTools(): Promise<void> {
   }
 }
 
-async function callTool(
-  name: string,
-  args: Record<string, unknown>,
-): Promise<void> {
+async function callTool( name: string, args: Record<string, unknown>): Promise<void> {
   if (!client) {
     console.log("Not connected to server.");
     return;
@@ -388,10 +387,7 @@ async function listPrompts(): Promise<void> {
   }
 }
 
-async function getPrompt(
-  name: string,
-  args: Record<string, unknown>,
-): Promise<void> {
+async function getPrompt( name: string, args: Record<string, unknown>,): Promise<void> {
   if (!client) {
     console.log("Not connected to server.");
     return;
@@ -451,7 +447,7 @@ async function listResources(): Promise<void> {
 async function cleanup(): Promise<void> {
   if (client && transport) {
     try {
-      // First try to terminate the session gracefully
+      // Rry to terminate the session gracefully
       if (transport.sessionId) {
         try {
           console.log("Terminating session before exit...");
@@ -475,14 +471,14 @@ async function cleanup(): Promise<void> {
   process.exit(0);
 }
 
-// Set up raw mode for keyboard input to capture Escape key
+// Set up raw mode for keyboard input to capture the Escape key
 process.stdin.setRawMode(true);
 process.stdin.on("data", async (data) => {
-  // Check for Escape key (27)
+  // Check for the Escape key (27)
   if (data.length === 1 && data[0] === 27) {
     console.log("\nESC key pressed. Disconnecting from server...");
 
-    // Abort current operation and disconnect from server
+    // Abort the current operation and disconnect from the server
     if (client && transport) {
       await disconnect();
       console.log("Disconnected. Press Enter to continue.");
